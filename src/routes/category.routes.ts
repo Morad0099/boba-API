@@ -1,10 +1,14 @@
 import { Elysia } from 'elysia';
 import { CategoryController } from '../controllers/category.controller';
+import { authGuard } from '../middleware/auth.middleware';
 
 export const categoryRoutes = (app: Elysia) => {
     return app.group('/api/categories', (app) => 
         app
-            .post('/add', async ({ body }) => {
+            .post('/add', async ({ body, headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+
                 try {
                     const category = await CategoryController.createCategory(body as any);
                     return {
@@ -18,7 +22,9 @@ export const categoryRoutes = (app: Elysia) => {
                     };
                 }
             })
-            .get('/get', async () => {
+            .get('/get', async ({headers, set}) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
                 try {
                     const categories = await CategoryController.getAllCategories();
                     return {
@@ -32,7 +38,9 @@ export const categoryRoutes = (app: Elysia) => {
                     };
                 }
             })
-            .get('/get/:id', async ({ params: { id } }) => {
+            .get('/get/:id', async ({ params: { id }, headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
                 try {
                     const category = await CategoryController.getCategoryById(id);
                     return {

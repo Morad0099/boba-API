@@ -41,3 +41,9 @@ yarn-error.log*
 **/*.log
 package-lock.json
 **/*.bun
+
+# Upload directories
+uploads/
+uploads/*
+/uploads
+/uploads/items/*

@@ -4,12 +4,19 @@ import { connectDB } from './config/database';
 import { setupRoutes } from './routes';
 import staticPlugin from '@elysiajs/static';
 
-const app = new Elysia();
-
-app.use(staticPlugin({
-  prefix: '/uploads',  // URL prefix for static files
-  assets: 'uploads'    // Directory containing static files
-}));
+const app = new Elysia()
+    .use(staticPlugin({
+        prefix: '/uploads',
+        assets: 'uploads'
+    }))
+    .onError(({ error, set }) => {
+        console.error('Error:', error);
+        set.status = (error as any).status || 500;
+        return {
+            success: false,
+            error: error.message
+        };
+    });
 
 // Connect to database
 connectDB();
