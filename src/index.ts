@@ -17,6 +17,7 @@ const app = new Elysia()
             error: error.message
         };
     });
+    
 
 // Connect to database
 connectDB();

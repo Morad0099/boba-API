@@ -2,6 +2,7 @@
 import jwt from 'jsonwebtoken';
 import { ICustomer } from '../models/customer.model';
 import { TokenBlacklist } from '../models/token-blacklist.model';
+import { IAdmin } from '../models/admin.model';
 
 export class JWTUtils {
     private static readonly ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access_secret';
@@ -9,11 +10,12 @@ export class JWTUtils {
     private static readonly ACCESS_TOKEN_EXPIRY = '15m';
     private static readonly REFRESH_TOKEN_EXPIRY = '7d';
 
-    static generateTokens(customer: ICustomer) {
+    static generateTokens(customer: ICustomer| IAdmin) {
         const accessToken = jwt.sign(
             { 
                 sub: customer._id,
-                email: customer.email 
+                email: customer.email,
+                ...(customer as unknown as IAdmin).role && { role: (customer as unknown as IAdmin).role }
             },
             this.ACCESS_TOKEN_SECRET,
             { expiresIn: this.ACCESS_TOKEN_EXPIRY }
@@ -22,7 +24,8 @@ export class JWTUtils {
         const refreshToken = jwt.sign(
             { 
                 sub: customer._id,
-                email: customer.email 
+                email: customer.email ,
+                ...(customer as unknown as IAdmin).role && { role: (customer as unknown as IAdmin).role }
             },
             this.REFRESH_TOKEN_SECRET,
             { expiresIn: this.REFRESH_TOKEN_EXPIRY }

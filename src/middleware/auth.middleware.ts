@@ -2,6 +2,7 @@
 import { Elysia } from 'elysia';
 import { JWTUtils } from '../utils/jwt.utils';
 import { Customer } from '../models/customer.model';
+import { Admin } from '../models/admin.model';
 
 interface AuthResponse {
     success: boolean;
@@ -24,12 +25,13 @@ export const authGuard = async ({ headers, set }: { headers: any, set: any }) =>
         
         const decoded = await JWTUtils.verifyAccessToken(token) as any;
         const customer = await Customer.findById(decoded.sub).select('-password');
+        const admin = await Admin.findById(decoded.sub).select('-password');
         
-        if (!customer) {
+        if (!customer && !admin) {
             set.status = 401;
             return {
                 success: false,
-                error: 'Customer not found'
+                error: 'Invalid token - User not found'
             };
         }
 
