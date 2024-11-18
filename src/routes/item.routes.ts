@@ -79,5 +79,41 @@ export const itemRoutes = (app: Elysia) => {
                     };
                 }
             })
+            .delete('/delete/:id', async ({ params: { id }, headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+            
+                try {
+                    const result = await ItemController.deleteItem(id);
+                    return {
+                        success: true,
+                        message: result.message
+                    };
+                } catch (error: any) {
+                    set.status = 400;
+                    return {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            })
+            .patch('/toggle-stock/:id', async ({ params: { id }, headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+            
+                try {
+                    const item = await ItemController.toggleItemStock(id);
+                    return {
+                        success: true,
+                        data: item
+                    };
+                } catch (error: any) {
+                    set.status = 400;
+                    return {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            })
     );
 };

@@ -107,5 +107,23 @@ export const transactionRoutes = (app: Elysia) => {
                     };
                 }
             })
+            .get('/all', async ({ headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+
+                try {
+                    const transactions = await TransactionController.getAllTransactions();
+                    return {
+                        success: true,
+                        data: transactions
+                    };
+                } catch (error: any) {
+                    set.status = 400;
+                    return {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            })
     );
 };

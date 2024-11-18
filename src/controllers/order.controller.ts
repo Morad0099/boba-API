@@ -272,4 +272,35 @@ export class OrderController {
             throw error;
         }
     }
+
+    static async getAllOrders() {
+        try {
+            return await Order.find()
+                .sort({ createdAt: -1 })
+                .populate('customer')
+                .populate('items.item'); // This will populate the item details
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    static async updateOrderStatus(orderId: string, status: OrderStatus) {
+        try {
+            const order = await Order.findById(orderId);
+            if (!order) {
+                throw new Error('Order not found');
+            }
+    
+            const updatedOrder = await Order.findByIdAndUpdate(
+                orderId,
+                { $set: { status } },
+                { new: true }
+            ).populate('customer')
+             .populate('items.item');
+    
+            return updatedOrder;
+        } catch (error) {
+            throw error;
+        }
+    }
 }

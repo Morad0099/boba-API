@@ -176,4 +176,39 @@ export class CustomerController {
             throw error;
         }
     }
+
+    static async getAllCustomers() {
+        try {
+            const customers = await Address.find()
+                .select('-password')
+                .populate('customer')
+                .sort({ createdAt: -1 });
+            return customers;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+      static async getCustomerById(id: string) {
+        try {
+          const customer = await Customer.findById(id)
+            .select('-password')
+            .populate('addresses');
+          if (!customer) throw new Error('Customer not found');
+          return customer;
+        } catch (error) {
+          throw error;
+        }
+      }
+    
+      static async deleteCustomer(id: string) {
+        try {
+          const customer = await Customer.findById(id);
+          if (!customer) throw new Error('Customer not found');
+          await Address.deleteMany({ customer: id });
+          await customer.deleteOne();
+        } catch (error) {
+          throw error;
+        }
+      }
 }

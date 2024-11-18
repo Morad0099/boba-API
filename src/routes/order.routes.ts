@@ -1,8 +1,9 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { OrderController } from "../controllers/order.controller";
 import { authGuard } from "../middleware/auth.middleware";
 import jwt from "jsonwebtoken";
 import { CreateOrderDto } from "../types/order.types";
+import { OrderStatus } from "../models/order.model";
 
 export const orderRoutes = (app: Elysia) => {
   return app.group("/api/orders", (app) =>
@@ -71,6 +72,24 @@ export const orderRoutes = (app: Elysia) => {
           };
         }
       })
+      .get('/get', async ({ headers, set }) => {
+        const auth = await authGuard({ headers, set });
+        if (auth !== true) return auth;
+
+        try {
+            const orders = await OrderController.getAllOrders();
+            return {
+                success: true,
+                data: orders
+            };
+        } catch (error: any) {
+            set.status = 400;
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    })
       .get("/get/:id", async ({ params: { id }, headers, set }) => {
         const auth = await authGuard({ headers, set });
         if (auth !== true) return auth;
@@ -101,5 +120,23 @@ export const orderRoutes = (app: Elysia) => {
           };
         }
       })
+      .patch('/:id/update-status', async ({ params: { id }, body, headers, set }: { params: { id: string }, body: { status: string }, headers: any, set: any }) => {
+        const auth = await authGuard({ headers, set });
+        if (auth !== true) return auth;
+    
+        try {
+            const order = await OrderController.updateOrderStatus(id, body.status as OrderStatus);
+            return {
+                success: true,
+                data: order
+            };
+        } catch (error: any) {
+            set.status = 400;
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    })
   );
 };

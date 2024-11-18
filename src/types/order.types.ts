@@ -45,6 +45,10 @@ export interface OrderResponse {
     createdAt: string;
 }
 
+export interface UpdateOrderStatusDto {
+    status: OrderStatus;
+  }
+
 export interface OrderResponseWithMessage extends OrderResponse {
     paymentMessage: string;
 }

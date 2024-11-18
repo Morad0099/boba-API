@@ -6,7 +6,7 @@ export interface IItem extends Document {
     category: ICategory['_id'];
     description?: string;
     price: number;
-    // inStock: boolean;
+    inStock: boolean;
     image: string;
     imageUrl?: string;
     createdAt: Date;
@@ -36,11 +36,11 @@ const itemSchema = new Schema({
     image: {
         type: String,
         required: [true, 'Item image is required']
+    },
+    inStock: {
+        type: Boolean,
+        default: true
     }
-    // inStock: {
-    //     type: Boolean,
-    //     default: true
-    // }
 }, {
     timestamps: true,
     versionKey: false

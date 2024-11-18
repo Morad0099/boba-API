@@ -232,5 +232,41 @@ export const customerRoutes = (app: Elysia) => {
                     };
                 }
             })
+            .get('/get', async ({ headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+        
+                try {
+                  const customers = await CustomerController.getAllCustomers();
+                  return { success: true, data: customers };
+                } catch (error: any) {
+                  set.status = 400;
+                  return { success: false, error: error.message };
+                }
+              })
+              .get('/get/:id', async ({ params: { id }, headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+        
+                try {
+                  const customer = await CustomerController.getCustomerById(id);
+                  return { success: true, data: customer };
+                } catch (error: any) {
+                  set.status = 400;
+                  return { success: false, error: error.message };
+                }
+              })
+              .delete('/delete/:id', async ({ params: { id }, headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+        
+                try {
+                  await CustomerController.deleteCustomer(id);
+                  return { success: true, message: 'Customer deleted successfully' };
+                } catch (error: any) {
+                  set.status = 400;
+                  return { success: false, error: error.message };
+                }
+              })
     );
 };

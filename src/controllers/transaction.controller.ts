@@ -90,4 +90,32 @@ export class TransactionController {
             throw error;
         }
     }
+
+    static async getAllTransactions() {
+        try {
+            const transactions = await Transaction.find()
+                .populate({
+                    path: 'order',
+                    populate: [
+                        {
+                            path: 'customer',
+                            select: 'name email'
+                        },
+                        {
+                            path: 'items.item',
+                            select: 'name price'
+                        },
+                        {
+                            path: 'paymentNumber',
+                            select: 'number provider'
+                        }
+                    ]
+                })
+                .sort({ createdAt: -1 });
+
+            return transactions;
+        } catch (error) {
+            throw error;
+        }
+    }
 }

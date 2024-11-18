@@ -7,7 +7,7 @@ import { IAdmin } from '../models/admin.model';
 export class JWTUtils {
     private static readonly ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access_secret';
     private static readonly REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';
-    private static readonly ACCESS_TOKEN_EXPIRY = '15m';
+    private static readonly ACCESS_TOKEN_EXPIRY = '24h';
     private static readonly REFRESH_TOKEN_EXPIRY = '7d';
 
     static generateTokens(customer: ICustomer| IAdmin) {

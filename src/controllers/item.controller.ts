@@ -55,4 +55,37 @@ export class ItemController {
             throw error;
         }
     }
+
+    static async deleteItem(id: string) {
+        try {
+            const item = await Item.findById(id);
+            if (!item) {
+                throw new Error('Item not found');
+            }
+    
+            await Item.findByIdAndDelete(id);
+            return { message: 'Item deleted successfully' };
+        } catch (error) {
+            throw error;
+        }
+    }
+    
+    static async toggleItemStock(id: string) {
+        try {
+            const item = await Item.findById(id);
+            if (!item) {
+                throw new Error('Item not found');
+            }
+    
+            const updatedItem = await Item.findByIdAndUpdate(
+                id,
+                { $set: { inStock: !item.inStock } },
+                { new: true }
+            ).populate('category', 'name');
+    
+            return updatedItem;
+        } catch (error) {
+            throw error;
+        }
+    }
 }
