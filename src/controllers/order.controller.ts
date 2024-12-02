@@ -102,7 +102,7 @@ export class OrderController {
                     console.log('Toppings for item:', productItem.name, toppings);
     
                     const toppingsTotal = toppings.reduce((sum, t) => sum + t.price, 0);
-                    const subtotal = (productItem.price + toppingsTotal) * item.quantity;
+                    const subtotal = (productItem.price * item.quantity) + (toppingsTotal * item.quantity);
     
                     console.log('Subtotal for item:', productItem.name, subtotal);
     

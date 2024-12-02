@@ -46,7 +46,7 @@ export class ToppingController {
         try {
             return await Topping.find()
                 .sort({ name: 1 })
-                .populate('item', 'name');
+                .populate('category', 'name');
         } catch (error) {
             throw error;
         }
