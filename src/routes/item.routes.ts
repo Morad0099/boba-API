@@ -115,5 +115,23 @@ export const itemRoutes = (app: Elysia) => {
                     };
                 }
             })
+            .get('/:id', async ({ params: { id }, headers, set }) => {
+                const auth = await authGuard({ headers, set });
+                if (auth !== true) return auth;
+            
+                try {
+                    const item = await ItemController.getItemById(id);
+                    return {
+                        success: true,
+                        data: item
+                    };
+                } catch (error: any) {
+                    set.status = 400;
+                    return {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            })
     );
 };

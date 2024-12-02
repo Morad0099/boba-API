@@ -88,4 +88,16 @@ export class ItemController {
             throw error;
         }
     }
+
+    static async getItemById(id: string) {
+        try {
+            const item = await Item.findById(id).populate('category', 'name');
+            if (!item) {
+                throw new Error('Item not found');
+            }
+            return item;
+        } catch (error) {
+            throw error;
+        }
+    }
 }
