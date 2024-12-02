@@ -4,6 +4,7 @@ import { TransactionStatus } from '../models/transaction.model';
 export interface CreateOrderItemDto {
     itemId: string;
     quantity: number;
+    toppings?: string[]; // Optional array of topping IDs
 }
 
 export interface CreateOrderDto {

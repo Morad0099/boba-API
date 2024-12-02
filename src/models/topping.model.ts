@@ -1,9 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { IItem } from './item.model';
+import { ICategory } from './category.model';
 
 export interface ITopping extends Document {
     name: string;
-    item: IItem['_id'];
+    category: ICategory['_id'];
     price: number;
     description?: string;
     inStock: boolean;
@@ -17,10 +18,10 @@ const toppingSchema = new Schema({
         required: [true, 'Topping name is required'],
         trim: true
     },
-    item: {
+    category: {
         type: Schema.Types.ObjectId,
-        ref: 'Item',
-        required: [true, 'Item is required']
+        ref: 'Category',
+        required: [true, 'Category is required']
     },
     price: {
         type: Number,

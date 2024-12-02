@@ -5,6 +5,7 @@ import { IAddress } from './address.model';
 import { IPaymentNumber } from './payment-number.model';
 import { IItem } from './item.model';
 import { Types } from 'mongoose';
+import { ITopping } from './topping.model';
 
 export enum OrderStatus {
     PENDING = 'PENDING',
@@ -20,6 +21,10 @@ export interface OrderItem {
     quantity: number;
     price: number;
     subtotal: number;
+    toppings: Array<{
+        topping: ITopping['_id'];
+        price: number;
+    }>; 
 }
 
 export interface IOrder extends Document {
@@ -65,7 +70,18 @@ const orderSchema = new Schema({
         subtotal: {
             type: Number,
             required: true
-        }
+        },
+        toppings: [{
+            topping: {
+                type: Schema.Types.ObjectId,
+                ref: 'Topping',
+                required: true
+            },
+            price: {
+                type: Number,
+                required: true
+            }
+        }]
     }],
     totalAmount: {
         type: Number,

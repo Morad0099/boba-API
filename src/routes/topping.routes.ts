@@ -12,12 +12,12 @@ export const toppingRoutes = (app: Elysia) => {
                 try {
                     const toppingData = body as {
                         name: string;
-                        item: string;
+                        category: string;
                         price: number;
                         inStock?: boolean;
                     };
 
-                    if (!toppingData.name || !toppingData.item || isNaN(toppingData.price)) {
+                    if (!toppingData.name || !toppingData.category || isNaN(toppingData.price)) {
                         throw new Error('Missing required fields');
                     }
 

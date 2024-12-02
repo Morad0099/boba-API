@@ -6,6 +6,7 @@ import { PaymentNumber } from '../models/payment-number.model';
 import { Customer } from '../models/customer.model';
 import type { CreateOrderDto, OrderResponse, OrderResponseWithMessage } from '../types/order.types';
 import { transformOrderToResponse } from '../utils/order.utils';
+import { Topping } from '../models/topping.model';
 
 
 // LazyPay API integration
@@ -65,48 +66,68 @@ export class OrderController {
             // Validate delivery address
             const address = await Address.findOne({
                 _id: data.deliveryAddressId,
-                customer: customerId
+                customer: customerId,
             });
             if (!address) throw new Error('Invalid delivery address');
-
+    
             // Validate payment number
             const paymentNumber = await PaymentNumber.findOne({
                 _id: data.paymentNumberId,
-                customer: customerId
+                customer: customerId,
             });
             if (!paymentNumber) throw new Error('Invalid payment number');
-
+    
             // Get customer details
             const customer = await Customer.findById(customerId);
             if (!customer) throw new Error('Customer not found');
-
+    
             // Calculate order items and total
             const orderItems = await Promise.all(
                 data.items.map(async (item) => {
                     const productItem = await Item.findById(item.itemId);
                     if (!productItem) throw new Error(`Item not found: ${item.itemId}`);
-
+    
+                    // Fetch and calculate toppings
+                    const toppings = await Promise.all(
+                        (item.toppings || []).map(async (toppingId: string) => {
+                            const topping = await Topping.findById(toppingId);
+                            if (!topping) throw new Error(`Topping not found: ${toppingId}`);
+                            return {
+                                topping: topping._id,
+                                price: topping.price,
+                            };
+                        })
+                    );
+    
+                    console.log('Toppings for item:', productItem.name, toppings);
+    
+                    const toppingsTotal = toppings.reduce((sum, t) => sum + t.price, 0);
+                    const subtotal = (productItem.price + toppingsTotal) * item.quantity;
+    
+                    console.log('Subtotal for item:', productItem.name, subtotal);
+    
                     return {
                         item: productItem._id,
                         quantity: item.quantity,
                         price: productItem.price,
-                        subtotal: productItem.price * item.quantity
+                        subtotal,
+                        toppings,
                     };
                 })
             );
-
+    
             const totalAmount = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
-
-            // Create order
+    
+            // Create the order
             const order = new Order({
                 customer: customerId,
                 items: orderItems,
                 totalAmount,
                 deliveryAddress: address._id,
                 paymentNumber: paymentNumber._id,
-                status: OrderStatus.PENDING
+                status: OrderStatus.PENDING,
             });
-
+    
             await order.save();
 
             // Create transaction
@@ -149,6 +170,7 @@ export class OrderController {
                 // Return order with populated fields
                 const populatedOrder = await Order.findById(order._id)
                     .populate('items.item', 'name price')
+                    .populate('items.toppings', 'name price')
                     .populate('deliveryAddress', 'streetAddress city region landmark')
                     .populate('paymentNumber', 'number provider')
                     .populate('customer', 'name phone');
