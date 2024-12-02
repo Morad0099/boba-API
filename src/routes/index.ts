@@ -8,6 +8,7 @@ import { orderRoutes } from './order.routes';
 import { transactionRoutes } from './transaction.routes';
 import { adminRoutes } from './admin.routes';
 import { dashboardRoutes } from './dashboard.routes';
+import { toppingRoutes } from './topping.routes';
 
 export const setupRoutes = (app: Elysia) => {
     categoryRoutes(app);
@@ -19,5 +20,6 @@ export const setupRoutes = (app: Elysia) => {
     adminRoutes(app);
     transactionRoutes(app);
     dashboardRoutes(app);
+    toppingRoutes(app);
     return app;
 };
