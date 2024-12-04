@@ -4,7 +4,13 @@ import { authGuard } from "../middleware/auth.middleware";
 import jwt from "jsonwebtoken";
 import { CreateOrderDto } from "../types/order.types";
 import { OrderStatus } from "../models/order.model";
-
+type CallbackPayload = {
+  code: string;
+  transactionId: string;
+  status?: string;
+  message?: string;
+  [key: string]: any; // For any additional fields from payment provider
+};
 export const orderRoutes = (app: Elysia) => {
   return app.group("/api/orders", (app) =>
     app
@@ -42,6 +48,33 @@ export const orderRoutes = (app: Elysia) => {
           };
         }
       })
+      .post(
+        "/callback",
+        async ({ body, set }) => {
+          try {
+            const result = await OrderController.handleCallback(body as any);
+            return {
+              success: true,
+              data: result
+            };
+          } catch (error: any) {
+            set.status = 500;
+            return {
+              success: false,
+              message: error.message
+            };
+          }
+        },
+        {
+          // Define body schema for validation
+          body: t.Object({
+            code: t.String(),
+            transactionId: t.String(),
+            status: t.Optional(t.String()),
+            message: t.Optional(t.String())
+          })
+        }
+      )
       .get("/my-orders", async ({ headers, set }) => {
         const auth = await authGuard({ headers, set });
         if (auth !== true) return auth;

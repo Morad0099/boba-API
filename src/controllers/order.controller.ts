@@ -7,13 +7,15 @@ import { Customer } from '../models/customer.model';
 import type { CreateOrderDto, OrderResponse, OrderResponseWithMessage } from '../types/order.types';
 import { transformOrderToResponse } from '../utils/order.utils';
 import { Topping } from '../models/topping.model';
+import { SMSService } from '../services/sms.service';
+import { Admin } from '../models/admin.model';
 
 
 // LazyPay API integration
 const LAZYPAY_BASE_URL = 'https://lazypaygh.com/api';
 const MERCHANT_ID = '63dcd6fbf7f60ec473d09885';
 const API_KEY = '56babbf4-34dc-4d26-b58e-c9809c7bb364';
-const CALLBACK_URL = 'https://your-domain.com/api/v1/transactions/callback';
+const CALLBACK_URL = 'http://localhost:4000/api/orders/callback';
 
 class LazyPayAPI {
     static async getToken(operation = 'DEBIT'): Promise<string> {
@@ -208,37 +210,96 @@ export class OrderController {
 
 
     // Add callback handler for payment provider webhook
-    static async handlePaymentCallback(callbackData: any) {
+    static async handleCallback(req: Request): Promise<any> {
         try {
+            const body = await req.json();
+            const { code, transactionId } = body;
+
+            // Find transaction
             const transaction = await Transaction.findOne({
-                'metadata.paymentProviderRef': callbackData.transactionId
+                'metadata.paymentProviderRef': transactionId
             });
 
-            if (!transaction) throw new Error('Transaction not found');
+            if (!transaction) {
+                throw new Error('Transaction not found');
+            }
 
-            const order = await Order.findById(transaction.order);
-            if (!order) throw new Error('Order not found');
+            // Map payment provider status to your status
+            let status: TransactionStatus;
+            switch (code) {
+                case '00':
+                    status = TransactionStatus.SUCCESS;
+                    break;
+                case '02':
+                    status = TransactionStatus.FAILED;
+                    break;
+                default:
+                    status = TransactionStatus.PENDING;
+                    break;
+            }
 
-            // Update transaction and order status based on callback
-            const status = callbackData.status.toUpperCase();
+            // Update transaction
             await transaction.updateOne({
-                status: status === 'SUCCESS' ? TransactionStatus.SUCCESS : TransactionStatus.FAILED,
-                'metadata.paymentCallback': callbackData
+                $set: {
+                    status,
+                    'metadata.paymentCallback': req.body,
+                    updatedAt: new Date()
+                }
             });
 
-            if (status === 'SUCCESS') {
-                await order.updateOne({ status: OrderStatus.CONFIRMED });
-                
-                // Send SMS notification
-                const message = `Payment confirmed: ${transaction.transactionReference}. GHS ${transaction.amount} received. Thank you for your order!`;
-                // Implement SMS sending logic here
-            } else {
-                await order.updateOne({ status: OrderStatus.CANCELLED });
+            // If payment successful, update order and send notifications
+            if (status === TransactionStatus.SUCCESS) {
+                const order = await Order.findById(transaction.order)
+                    .populate('customer')
+                    .populate('items.item');
+
+                if (!order) {
+                    throw new Error('Order not found');
+                }
+
+                // Update order status
+                await order.updateOne({
+                    status: OrderStatus.CONFIRMED,
+                    updatedAt: new Date()
+                });
+
+                // Send notifications
+                await this.sendNotifications(order, transaction);
+            } else if (status === TransactionStatus.FAILED) {
+                // Handle failed payment
+                await Order.findByIdAndUpdate(transaction.order, {
+                    status: OrderStatus.CANCELLED,
+                    updatedAt: new Date()
+                });
             }
 
             return { success: true };
         } catch (error) {
+            console.error('Payment callback error:', error);
             throw error;
+        }
+    }
+
+    private static async sendNotifications(order: any, transaction: any) {
+        try {
+            // Customer notification
+            const customerMessage = `Payment confirmed: ${transaction.transactionReference}. Amount: GHS ${transaction.amount}. Your order #${order.orderNumber} has been received and is being processed. Thank you!`;
+            
+            if (order.customer?.phone) {
+                await SMSService.sendSMS(customerMessage, order.customer.phone);
+            }
+
+            // Admin notification
+            // const admins = await Admin.find({ active: true });
+            // const adminPhones = admins.map(admin => admin.phone).filter(Boolean);
+
+            // if (adminPhones.length > 0) {
+            //     const adminMessage = `New order #${order.orderNumber} received! Amount: GHS ${transaction.amount}. Customer: ${order.customer?.name || 'N/A'}`;
+            //     await SMSService.sendSMS(adminMessage, adminPhones);
+            // }
+        } catch (error) {
+            console.error('Notification error:', error);
+            // Don't throw error here to prevent callback failure
         }
     }
 
