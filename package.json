@@ -6,7 +6,7 @@
     "restart": "pm2 restart boba-api",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
-    "prod": "set NODE_ENV=prod && rm -rf build/ && bun build ./src/server.ts --target=bun --outfile=./build/server.js"
+    "prod": "set NODE_ENV=production && rm -rf build/ && bun build ./src/server.ts --target=bun --outfile=./build/server.js"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.1",
