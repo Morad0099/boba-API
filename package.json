@@ -2,8 +2,11 @@
   "name": "BobaAPI",
   "version": "1.0.50",
   "scripts": {
+    "start": "pm2 start -n boba-api -i 1 --interpreter ~/.bun/bin/bun build/server.js",
+    "restart": "pm2 restart boba-api",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun run --watch src/index.ts",
+    "prod": "set NODE_ENV=prod && rm -rf build/ && bun build ./src/server.ts --target=bun --outfile=./build/server.js"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.1",
