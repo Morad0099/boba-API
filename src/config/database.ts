@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === "development";
 
 interface DBConfig {
   MONGODB_URI: string;
@@ -13,12 +13,13 @@ const getDBConfig = (): DBConfig => {
       MONGODB_URI: "mongodb://localhost:27017/boba-app",
       options: {
         // No auth for development
-      }
+      },
     };
   }
 
   return {
-    MONGODB_URI: process.env.MONGODB_URI || "mongodb://localhost:27017/boba-app",
+    MONGODB_URI:
+      process.env.MONGODB_URI || "mongodb://172.31.31.238:27017/boba-app",
     options: {
       authSource: "admin",
       authMechanism: "SCRAM-SHA-1",
@@ -26,7 +27,7 @@ const getDBConfig = (): DBConfig => {
         username: "lazypay",
         password: "M!Lazysis@t0m1c112@",
       },
-    }
+    },
   };
 };
 
@@ -34,7 +35,11 @@ export async function connectDB() {
   try {
     const config = getDBConfig();
     await mongoose.connect(config.MONGODB_URI, config.options);
-    console.log(`🍃 Connected to MongoDB (${isDevelopment ? 'Development' : 'Production'})`);
+    console.log(
+      `🍃 Connected to MongoDB (${
+        isDevelopment ? "Development" : "Production"
+      })`
+    );
   } catch (error) {
     console.error("MongoDB connection error:", error);
     process.exit(1);
