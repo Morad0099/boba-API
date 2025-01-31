@@ -7,8 +7,8 @@ export const adminRoutes = (app: Elysia) => {
   return app.group("/api/admin", (app) =>
     app
       .post("/register", async ({ body, headers, set }) => {
-        const auth = await authGuard({ headers, set });
-        if (auth !== true) return auth;
+        // const auth = await authGuard({ headers, set });
+        // if (auth !== true) return auth;
 
         // // Only super_admin can create new admins
         // const roleCheck = await roleGuard(['super_admin'])({ headers, set });
