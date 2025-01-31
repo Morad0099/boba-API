@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const isDevelopment = process.env.NODE_ENV === "development";
+const isDevelopment = false;
 
 interface DBConfig {
   MONGODB_URI: string;
