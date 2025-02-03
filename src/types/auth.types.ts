@@ -6,8 +6,8 @@ export interface RegisterCustomerDto {
     email: string;
     password: string;
     phone: string;
-    dob: Date;
-    gender: Gender;
+    // dob: Date;
+    // gender: Gender;
 }
 
 export interface LoginCustomerDto {
@@ -21,8 +21,8 @@ export interface AuthResponse {
         name: string;
         email: string;
         phone: string;
-        dob: Date;
-        gender: Gender;
+        dob?: Date;
+        gender?: Gender;
     };
     tokens: {
         accessToken: string;

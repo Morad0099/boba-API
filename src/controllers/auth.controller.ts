@@ -14,21 +14,21 @@ export class AuthController {
             }
 
             // Validate gender
-            if (!Object.values(Gender).includes(data.gender.toUpperCase() as Gender)) {
-                throw new Error('Invalid gender value. Must be either MALE or FEMALE');
-            }
+            // if (!Object.values(Gender).includes(data.gender.toUpperCase() as Gender)) {
+            //     throw new Error('Invalid gender value. Must be either MALE or FEMALE');
+            // }
 
             // Parse and validate date
-            const dob = new Date(data.dob);
-            if (isNaN(dob.getTime())) {
-                throw new Error('Invalid date format. Please use YYYY-MM-DD format');
-            }
+            // const dob = new Date(data.dob);
+            // if (isNaN(dob.getTime())) {
+            //     throw new Error('Invalid date format. Please use YYYY-MM-DD format');
+            // }
 
             // Create new customer with parsed date and uppercase gender
             const customer = new Customer({
                 ...data,
-                gender: data.gender.toUpperCase(),
-                dob
+                // gender: data.gender.toUpperCase(),
+                // dob
             });
             await customer.save();
 
@@ -55,7 +55,7 @@ export class AuthController {
     static async login(data: LoginCustomerDto): Promise<AuthResponse> {
         try {
             // Find customer
-            const customer = await Customer.findOne({ email: data.email });
+            const customer = await Customer.findOne({$or:[{email: data.email},{phone: data.email}]  });
             if (!customer) {
                 throw new Error('Invalid credentials');
             }
@@ -76,8 +76,8 @@ export class AuthController {
                     name: customer.name,
                     email: customer.email,
                     phone: customer.phone,
-                    gender: customer.gender,
-                    dob: customer.dob
+                    // gender: customer.gender,
+                    // dob: customer.dob
                 },
                 tokens
             };

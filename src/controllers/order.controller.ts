@@ -12,10 +12,10 @@ import { Admin } from '../models/admin.model';
 
 
 // LazyPay API integration
-const LAZYPAY_BASE_URL = 'https://lazypaygh.com/api';
+const LAZYPAY_BASE_URL = 'https://doronpay.com/api';
 const MERCHANT_ID = '63dcd6fbf7f60ec473d09885';
-const API_KEY = '56babbf4-34dc-4d26-b58e-c9809c7bb364';
-const CALLBACK_URL = 'http://localhost:4000/api/orders/callback';
+const API_KEY = '453189c4-f902-4989-8fbb-d6ee20003595';
+const CALLBACK_URL = 'http://18.133.83.229:8021/api/orders/callback';
 
 class LazyPayAPI {
     static async getToken(operation = 'DEBIT'): Promise<string> {
