@@ -45,23 +45,23 @@ const customerSchema = new Schema({
         required: [true, 'Phone number is required'],
         trim: true
     },
-    gender: {
-        type: String,
-        required: [true, 'Gender is required'],
-        enum: Object.values(Gender),
-        uppercase: true,
-        trim: true
-    },
-    dob: {
-        type: Date,
-        required: [true, 'Date of birth is required'],
-        validate: {
-            validator: function(value: Date) {
-                return value <= new Date();
-            },
-            message: 'Date of birth cannot be in the future'
-        }
-    }
+    // gender: {
+    //     type: String,
+    //     // required: [true, 'Gender is required'],
+    //     enum: Object.values(Gender),
+    //     uppercase: true,
+    //     trim: true
+    // },
+    // dob: {
+    //     type: Date,
+    //     // required: [true, 'Date of birth is required'],
+    //     validate: {
+    //         validator: function(value: Date) {
+    //             return value <= new Date();
+    //         },
+    //         message: 'Date of birth cannot be in the future'
+    //     }
+    // }
 }, {
     timestamps: true,
     versionKey: false
