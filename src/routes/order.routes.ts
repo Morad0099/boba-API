@@ -55,13 +55,13 @@ export const orderRoutes = (app: Elysia) => {
             const result = await OrderController.handleCallback(body as any);
             return {
               success: true,
-              data: result
+              data: result,
             };
           } catch (error: any) {
             set.status = 500;
             return {
               success: false,
-              message: error.message
+              message: error.message,
             };
           }
         },
@@ -71,8 +71,8 @@ export const orderRoutes = (app: Elysia) => {
             code: t.String(),
             transactionId: t.String(),
             status: t.Optional(t.String()),
-            message: t.Optional(t.String())
-          })
+            message: t.Optional(t.String()),
+          }),
         }
       )
       .get("/my-orders", async ({ headers, set }) => {
@@ -105,24 +105,24 @@ export const orderRoutes = (app: Elysia) => {
           };
         }
       })
-      .get('/get', async ({ headers, set }) => {
+      .get("/get", async ({ headers, set }) => {
         const auth = await authGuard({ headers, set });
         if (auth !== true) return auth;
 
         try {
-            const orders = await OrderController.getAllOrders();
-            return {
-                success: true,
-                data: orders
-            };
+          const orders = await OrderController.getAllOrders();
+          return {
+            success: true,
+            data: orders,
+          };
         } catch (error: any) {
-            set.status = 400;
-            return {
-                success: false,
-                error: error.message
-            };
+          set.status = 400;
+          return {
+            success: false,
+            error: error.message,
+          };
         }
-    })
+      })
       .get("/get/:id", async ({ params: { id }, headers, set }) => {
         const auth = await authGuard({ headers, set });
         if (auth !== true) return auth;
@@ -153,23 +153,39 @@ export const orderRoutes = (app: Elysia) => {
           };
         }
       })
-      .patch('/:id/update-status', async ({ params: { id }, body, headers, set }: { params: { id: string }, body: { status: string }, headers: any, set: any }) => {
-        const auth = await authGuard({ headers, set });
-        if (auth !== true) return auth;
-    
-        try {
-            const order = await OrderController.updateOrderStatus(id, body.status as OrderStatus);
+      .patch(
+        "/:id/update-status",
+        async ({
+          params: { id },
+          body,
+          headers,
+          set,
+        }: {
+          params: { id: string };
+          body: { status: string };
+          headers: any;
+          set: any;
+        }) => {
+          const auth = await authGuard({ headers, set });
+          if (auth !== true) return auth;
+
+          try {
+            const order = await OrderController.updateOrderStatus(
+              id,
+              body.status as OrderStatus
+            );
             return {
-                success: true,
-                data: order
+              success: true,
+              data: order,
             };
-        } catch (error: any) {
+          } catch (error: any) {
             set.status = 400;
             return {
-                success: false,
-                error: error.message
+              success: false,
+              error: error.message,
             };
+          }
         }
-    })
+      )
   );
 };
