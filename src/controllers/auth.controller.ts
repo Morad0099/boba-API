@@ -8,7 +8,8 @@ import type {
 } from "../types/auth.types";
 import { TokenBlacklist } from "../models/token-blacklist.model";
 import axios from "axios";
-import bcrypt from 'bcrypt';
+import bcrypt from "bcrypt";
+import $loyverseConfig from "../loyverse/loyverse.config";
 
 export class AuthController {
   static async register(
@@ -19,7 +20,9 @@ export class AuthController {
 
     try {
       // Check if customer already exists in local DB
-      const existingCustomer = await Customer.findOne({ email: data.email });
+      const existingCustomer = await Customer.findOne({
+        $or: [{ email: data.email }, { phone_number: data.email }],
+      });
       if (existingCustomer) {
         throw new Error("Email already registered");
       }
@@ -54,11 +57,11 @@ export class AuthController {
 
       // Save customer in third-party service
       const thirdPartyResponse = await axios.post(
-        "https://api.loyverse.com/v1.0/customers",
+        `${$loyverseConfig.baseUrl}/customers`,
         thirdPartyPayload,
         {
           headers: {
-            Authorization: `Bearer f48f9ca1de794c0e8d77b591bfc72807`,
+            Authorization: `Bearer ${$loyverseConfig.apiKey}`,
           },
         }
       );
@@ -103,26 +106,29 @@ export class AuthController {
       const customer = await Customer.findOne({
         $or: [{ email: data.email }, { phone_number: data.email }],
       });
-  
+
       if (!customer) {
         throw new Error("Invalid credentials");
       }
-  
+
       console.log("Entered password:", data.password); // Display entered password (phone number)
       console.log("Stored hashed password:", customer.password); // Display stored hashed password
-  
+
       // Compare entered password with the stored hashed password
-      const isPasswordValid = await bcrypt.compare(data.password, customer.password);
-  
+      const isPasswordValid = await bcrypt.compare(
+        data.password,
+        customer.password
+      );
+
       console.log("Password match:", isPasswordValid); // Should now return true if correct
-  
+
       if (!isPasswordValid) {
         throw new Error("Invalid credentials");
       }
-  
+
       // Generate tokens
       const tokens = JWTUtils.generateTokens(customer);
-  
+
       // Prepare response
       return {
         customer: {
@@ -137,9 +143,6 @@ export class AuthController {
       throw error;
     }
   }
-  
-  
-
 
   static async logout(accessToken: string) {
     try {

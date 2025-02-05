@@ -1,25 +1,30 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICategory extends Document {
-    name: string;
-    color: string;
-    createdAt: Date;
-    updatedAt: Date;
+  partnerCategoryId: string;
+  name: string;
+  color: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const categorySchema = new Schema({
+const categorySchema = new Schema(
+  {
+    partnerCategoryId: String,
     name: {
-        type: String,
-        required: [true, 'Category name is required'],
-        trim: true,
+      type: String,
+      required: [true, "Category name is required"],
+      trim: true,
     },
-    color: {type: String}
-}, {
+    color: { type: String },
+  },
+  {
     timestamps: true,
-    versionKey: false
-});
+    versionKey: false,
+  }
+);
 
 // Add index for faster queries
 categorySchema.index({ name: 1 });
 
-export const Category = mongoose.model<ICategory>('Category', categorySchema);
+export const Category = mongoose.model<ICategory>("Category", categorySchema);

@@ -7,6 +7,7 @@ export enum Gender {
 }
 
 export interface ICustomer extends Document {
+  partnerCustomerId: string;
   _id: string;
   name: string;
   email: string;
@@ -27,6 +28,7 @@ export interface ICustomer extends Document {
 
 const customerSchema = new Schema(
   {
+    partnerCustomerId: String,
     name: {
       type: String,
       required: [true, "Name is required"],
@@ -50,37 +52,37 @@ const customerSchema = new Schema(
       required: [true, "Phone number is required"],
       trim: true,
     },
-    address: { 
-      type: String, 
-      trim: true 
+    address: {
+      type: String,
+      trim: true,
     },
-    city: { 
-      type: String, 
-      trim: true 
+    city: {
+      type: String,
+      trim: true,
     },
-    region: { 
-      type: String, 
-      trim: true 
+    region: {
+      type: String,
+      trim: true,
     },
-    postal_code: { 
-      type: String, 
-      trim: true 
+    postal_code: {
+      type: String,
+      trim: true,
     },
-    country_code: { 
-      type: String, 
-      trim: true 
+    country_code: {
+      type: String,
+      trim: true,
     },
-    customer_code: { 
-      type: String, 
-      trim: true 
+    customer_code: {
+      type: String,
+      trim: true,
     },
-    note: { 
-      type: String, 
-      trim: true 
+    note: {
+      type: String,
+      trim: true,
     },
-    total_points: { 
-      type: Number, 
-      default: 0 
+    total_points: {
+      type: Number,
+      default: 0,
     },
   },
   {
@@ -102,13 +104,11 @@ customerSchema.pre("save", async function (next) {
   }
 });
 
-
 // Method to compare password
 customerSchema.methods.comparePassword = async function (
   phone_number: string
 ): Promise<boolean> {
   return bcrypt.compare(phone_number, this.password);
 };
-
 
 export const Customer = mongoose.model<ICustomer>("Customer", customerSchema);

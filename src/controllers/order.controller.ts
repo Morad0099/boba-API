@@ -17,6 +17,9 @@ import { transformOrderToResponse } from "../utils/order.utils";
 import { Topping } from "../models/topping.model";
 import { SMSService } from "../services/sms.service";
 import { Admin } from "../models/admin.model";
+import $loyverseConfig from "../loyverse/loyverse.config";
+import $loyverse from "../loyverse/loyverse.request";
+import $loyverseUtils from "../loyverse/loyverse.utils";
 
 // LazyPay API integration
 const LAZYPAY_BASE_URL = "https://doronpay.com/api";
@@ -159,7 +162,7 @@ export class OrderController {
           paymentNumber: paymentNumber.number,
           provider: paymentNumber.provider,
           customerName: customer.name,
-          customerPhone: customer.phone,
+          customerPhone: customer.phone_number,
         },
       });
 
@@ -198,7 +201,9 @@ export class OrderController {
           .populate("paymentNumber", "number provider")
           .populate("customer", "name phone");
 
-        if (!populatedOrder) throw new Error("Failed to populate order");
+        if (!populatedOrder) {
+          throw new Error("Failed to populate order");
+        }
 
         // Prepare response message based on provider
         const paymentMessage =
@@ -215,6 +220,64 @@ export class OrderController {
           },
           paymentMessage
         );
+
+        try {
+          const line_items = await Promise.all(
+            orderItems.map(async (item) => {
+              const [itemDetails, toppingDetails] = await Promise.all([
+                Item.findById(item.item),
+                Topping.findById(item.toppings),
+              ]);
+              return {
+                variant_id: itemDetails?.partnerItemId,
+                quantity: item.quantity,
+                price: item.price,
+                line_modifiers: item.toppings.map((topping) => ({
+                  modifier_option_id: toppingDetails?.partnerToppingsId,
+                  price: topping.price,
+                })),
+              };
+            })
+          );
+          const store_id = await $loyverseUtils.getStoreId();
+          const payment_type_id = await $loyverseUtils.getPaymentMethodId(
+            "momo"
+          );
+          // Create sales receipt in Loyverse
+          const salesReceipt = {
+            store_id: store_id,
+            order: order.orderNumber, // Your order reference
+            customer_id: customer.partnerCustomerId,
+            source: "BobaApp",
+            receipt_date: new Date().toISOString(),
+            line_items: line_items,
+            note: `Delivery Address: ${address.streetAddress}, ${address.city}`,
+            payments: [
+              {
+                payment_type_id: payment_type_id,
+                paid_at: new Date().toISOString(),
+              },
+            ],
+          };
+
+          const loyverseResponse = await $loyverse.createSalesReceipt(
+            salesReceipt
+          );
+
+          // Store Loyverse receipt ID in our order
+          await order.updateOne({
+            $set: {
+              partnerReceiptId: loyverseResponse.receipt_number,
+              partnerReceiptData: loyverseResponse,
+            },
+          });
+        } catch (loyverseError) {
+          console.error(
+            "Failed to create sales receipt in Loyverse:",
+            loyverseError
+          );
+          // Log error but don't throw - we still want to return the order to customer
+        }
 
         return orderResponse;
       } catch (error: any) {
