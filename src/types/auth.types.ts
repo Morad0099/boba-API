@@ -1,13 +1,16 @@
-import { Gender } from "../models/customer.model";
-
-// src/types/auth.types.ts
 export interface RegisterCustomerDto {
     name: string;
     email: string;
     password: string;
-    phone: string;
-    // dob: Date;
-    // gender: Gender;
+    phone_number: string;
+    address?: string;
+    city?: string;
+    region?: string;
+    postal_code?: string;
+    country_code?: string;
+    customer_code?: string;
+    note?: string;
+    total_points?: number;
 }
 
 export interface LoginCustomerDto {
@@ -20,9 +23,15 @@ export interface AuthResponse {
         _id: string;
         name: string;
         email: string;
-        phone: string;
-        dob?: Date;
-        gender?: Gender;
+        phone_number: string;
+        address?: string;
+        city?: string;
+        region?: string;
+        postal_code?: string;
+        country_code?: string;
+        customer_code?: string;
+        note?: string;
+        total_points?: number;
     };
     tokens: {
         accessToken: string;

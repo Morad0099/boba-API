@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const isDevelopment = false;
+const isDevelopment = true;
 
 interface DBConfig {
   MONGODB_URI: string;

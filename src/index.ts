@@ -4,6 +4,7 @@ import { connectDB } from "./config/database";
 import { setupRoutes } from "./routes";
 import staticPlugin from "@elysiajs/static";
 import { cors } from "@elysiajs/cors";
+import '../cron/category-cron';
 
 const app = new Elysia()
   .use(
