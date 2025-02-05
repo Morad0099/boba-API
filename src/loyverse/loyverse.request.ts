@@ -57,6 +57,26 @@ const getStoreSettings = async () => {
   }
 };
 
+const getReceiptStatus = async (receipt_number: string) => {
+  try {
+    const url: string = `${config.baseUrl}/receipts/${receipt_number}`;
+    const options = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    };
+    const response = await fetch(url, {
+      headers: options,
+    });
+    if (!response.ok) {
+      throw Error(response.statusText);
+    }
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    throw err;
+  }
+};
+
 const createSalesReceipt = async (payload: any) => {
   try {
     const url: string = `${config.baseUrl}/receipts`;
@@ -144,5 +164,6 @@ export default {
   fetchItems,
   fetchCustomers,
   createSalesReceipt,
-  getStoreSettings
+  getStoreSettings,
+  getReceiptStatus
 };

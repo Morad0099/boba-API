@@ -5,6 +5,7 @@ import { Item } from "../models/item.model";
 import { Customer } from "../models/customer.model";
 import dbStoreSettings from "../loyverse/loyverse.store-settings.db";
 
+
 // Types
 interface LoyverseVariant {
   cost: number;

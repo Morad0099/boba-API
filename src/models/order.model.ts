@@ -29,6 +29,7 @@ export interface OrderItem {
 
 export interface IOrder extends Document {
   _id: Types.ObjectId;
+  partnerReceiptId: string;
   customer: Types.ObjectId | ICustomer;
   orderNumber: string;
   items: OrderItem[];

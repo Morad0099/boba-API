@@ -7,7 +7,7 @@ import {
 import { Item } from "../models/item.model";
 import { Address } from "../models/address.model";
 import { PaymentNumber } from "../models/payment-number.model";
-import { Customer } from "../models/customer.model";
+import { Customer, ICustomer } from "../models/customer.model";
 import type {
   CreateOrderDto,
   OrderResponse,
@@ -86,30 +86,42 @@ export class OrderController {
         _id: data.deliveryAddressId,
         customer: customerId,
       });
-      if (!address) throw new Error("Invalid delivery address");
+
+      if (!address) {
+        throw new Error("Invalid delivery address");
+      }
 
       // Validate payment number
       const paymentNumber = await PaymentNumber.findOne({
         _id: data.paymentNumberId,
         customer: customerId,
       });
-      if (!paymentNumber) throw new Error("Invalid payment number");
+
+      if (!paymentNumber) {
+        throw new Error("Invalid payment number");
+      }
 
       // Get customer details
       const customer = await Customer.findById(customerId);
-      if (!customer) throw new Error("Customer not found");
+      if (!customer) {
+        throw new Error("Customer not found");
+      }
 
       // Calculate order items and total
       const orderItems = await Promise.all(
         data.items.map(async (item) => {
           const productItem = await Item.findById(item.itemId);
-          if (!productItem) throw new Error(`Item not found: ${item.itemId}`);
+          if (!productItem) {
+            throw new Error(`Item not found: ${item.itemId}`);
+          }
 
           // Fetch and calculate toppings
           const toppings = await Promise.all(
             (item.toppings || []).map(async (toppingId: string) => {
               const topping = await Topping.findById(toppingId);
-              if (!topping) throw new Error(`Topping not found: ${toppingId}`);
+              if (!topping) {
+                throw new Error(`Topping not found: ${toppingId}`);
+              }
               return {
                 topping: topping._id,
                 price: topping.price,
@@ -221,64 +233,6 @@ export class OrderController {
           paymentMessage
         );
 
-        try {
-          const line_items = await Promise.all(
-            orderItems.map(async (item) => {
-              const [itemDetails, toppingDetails] = await Promise.all([
-                Item.findById(item.item),
-                Topping.findById(item.toppings),
-              ]);
-              return {
-                variant_id: itemDetails?.partnerItemId,
-                quantity: item.quantity,
-                price: item.price,
-                line_modifiers: item.toppings.map((topping) => ({
-                  modifier_option_id: toppingDetails?.partnerToppingsId,
-                  price: topping.price,
-                })),
-              };
-            })
-          );
-          const store_id = await $loyverseUtils.getStoreId();
-          const payment_type_id = await $loyverseUtils.getPaymentMethodId(
-            "momo"
-          );
-          // Create sales receipt in Loyverse
-          const salesReceipt = {
-            store_id: store_id,
-            order: order.orderNumber, // Your order reference
-            customer_id: customer.partnerCustomerId,
-            source: "BobaApp",
-            receipt_date: new Date().toISOString(),
-            line_items: line_items,
-            note: `Delivery Address: ${address.streetAddress}, ${address.city}`,
-            payments: [
-              {
-                payment_type_id: payment_type_id,
-                paid_at: new Date().toISOString(),
-              },
-            ],
-          };
-
-          const loyverseResponse = await $loyverse.createSalesReceipt(
-            salesReceipt
-          );
-
-          // Store Loyverse receipt ID in our order
-          await order.updateOne({
-            $set: {
-              partnerReceiptId: loyverseResponse.receipt_number,
-              partnerReceiptData: loyverseResponse,
-            },
-          });
-        } catch (loyverseError) {
-          console.error(
-            "Failed to create sales receipt in Loyverse:",
-            loyverseError
-          );
-          // Log error but don't throw - we still want to return the order to customer
-        }
-
         return orderResponse;
       } catch (error: any) {
         // If payment initiation fails, update order and transaction status
@@ -344,8 +298,71 @@ export class OrderController {
           updatedAt: new Date(),
         });
 
+        try {
+          const line_items = await Promise.all(
+            order.items.map(async (item) => {
+              const [itemDetails, toppingDetails] = await Promise.all([
+                Item.findById(item.item),
+                Topping.findById(item.toppings),
+              ]);
+              return {
+                variant_id: itemDetails?.partnerItemId,
+                quantity: item.quantity,
+                price: item.price,
+                line_modifiers: item.toppings.map((topping) => ({
+                  modifier_option_id: toppingDetails?.partnerToppingsId,
+                  price: topping.price,
+                })),
+              };
+            })
+          );
+          const address = await Address.findById(order.deliveryAddress);
+          const store_id = await $loyverseUtils.getStoreId();
+          const payment_type_id = await $loyverseUtils.getPaymentMethodId(
+            "momo"
+          );
+          // Create sales receipt in Loyverse
+          const salesReceipt = {
+            store_id: store_id,
+            order: order.orderNumber, // Your order reference
+            customer_id: (order.customer as ICustomer)?.partnerCustomerId,
+            source: "BobaApp",
+            receipt_date: new Date().toISOString(),
+            line_items: line_items,
+            note: `Delivery Address: ${address?.streetAddress}, ${address?.city}`,
+            payments: [
+              {
+                payment_type_id: payment_type_id,
+                paid_at: new Date().toISOString(),
+              },
+            ],
+          };
+
+          const loyverseResponse = await $loyverse.createSalesReceipt(
+            salesReceipt
+          );
+
+          // Store Loyverse receipt ID in our order
+          await order.updateOne({
+            $set: {
+              partnerReceiptId: loyverseResponse.receipt_number,
+              partnerReceiptData: loyverseResponse,
+            },
+          });
+        } catch (loyverseError) {
+          console.error(
+            "Failed to create sales receipt in Loyverse:",
+            loyverseError
+          );
+          // Log error but don't throw - we still want to return the order to customer
+        }
+
         // Send notifications
-        await this.sendNotifications(order, transaction);
+        try {
+          await this.sendNotifications(order, transaction);
+        } catch (err) {
+          console.log("Error sending payment notification: ", err);
+        }
       } else if (status === TransactionStatus.FAILED) {
         // Handle failed payment
         await Order.findByIdAndUpdate(transaction.order, {
