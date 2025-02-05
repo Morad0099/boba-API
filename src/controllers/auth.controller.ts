@@ -7,34 +7,65 @@ import type {
   AuthResponse,
 } from "../types/auth.types";
 import { TokenBlacklist } from "../models/token-blacklist.model";
+import axios from "axios";
+import bcrypt from 'bcrypt';
 
 export class AuthController {
-  static async register(data: RegisterCustomerDto): Promise<AuthResponse> {
+  static async register(
+    data: RegisterCustomerDto,
+    token: string
+  ): Promise<AuthResponse> {
+    let customer;
+
     try {
-      // Check if customer already exists
+      // Check if customer already exists in local DB
       const existingCustomer = await Customer.findOne({ email: data.email });
       if (existingCustomer) {
         throw new Error("Email already registered");
       }
 
-      // Validate gender
-      // if (!Object.values(Gender).includes(data.gender.toUpperCase() as Gender)) {
-      //     throw new Error('Invalid gender value. Must be either MALE or FEMALE');
-      // }
+      // Hash phone number as password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(data.phone_number, salt);
 
-      // Parse and validate date
-      // const dob = new Date(data.dob);
-      // if (isNaN(dob.getTime())) {
-      //     throw new Error('Invalid date format. Please use YYYY-MM-DD format');
-      // }
-
-      // Create new customer with parsed date and uppercase gender
-      const customer = new Customer({
+      // Create new customer in local DB with hashed phone as password
+      customer = new Customer({
         ...data,
-        // gender: data.gender.toUpperCase(),
-        // dob
+        password: hashedPassword, // Use hashed phone as password
+        phone_number: data.phone_number, // Ensure it's correctly assigned
       });
       await customer.save();
+
+      // Prepare payload for third-party service
+      const thirdPartyPayload = {
+        // id: customer._id.toString(),
+        name: customer.name,
+        email: customer.email,
+        phone_number: customer.phone_number,
+        address: customer.address,
+        city: customer.city,
+        region: customer.region,
+        postal_code: customer.postal_code,
+        country_code: customer.country_code,
+        customer_code: customer.customer_code,
+        note: customer.note,
+        total_points: customer.total_points || 0,
+      };
+
+      // Save customer in third-party service
+      const thirdPartyResponse = await axios.post(
+        "https://api.loyverse.com/v1.0/customers",
+        thirdPartyPayload,
+        {
+          headers: {
+            Authorization: `Bearer f48f9ca1de794c0e8d77b591bfc72807`,
+          },
+        }
+      );
+
+      if (thirdPartyResponse.status !== 200) {
+        throw new Error("Failed to register customer in third-party service");
+      }
 
       // Generate tokens
       const tokens = JWTUtils.generateTokens(customer);
@@ -45,45 +76,60 @@ export class AuthController {
           _id: customer._id,
           name: customer.name,
           email: customer.email,
-          phone: customer.phone,
-          gender: customer.gender,
-          dob: customer.dob,
+          phone_number: customer.phone_number,
+          address: customer.address,
+          city: customer.city,
+          region: customer.region,
+          postal_code: customer.postal_code,
+          country_code: customer.country_code,
+          customer_code: customer.customer_code,
+          note: customer.note,
+          total_points: customer.total_points,
         },
         tokens,
       };
     } catch (error) {
+      // Rollback local DB changes if third-party registration fails
+      if (customer) {
+        await Customer.deleteOne({ _id: customer._id });
+      }
       throw error;
     }
   }
 
   static async login(data: LoginCustomerDto): Promise<AuthResponse> {
     try {
-      // Find customer
+      // Find customer by either email or phone_number
       const customer = await Customer.findOne({
-        $or: [{ email: data.email }, { phone: data.email }],
+        $or: [{ email: data.email }, { phone_number: data.email }],
       });
+  
       if (!customer) {
         throw new Error("Invalid credentials");
       }
-
-      // Verify password
-      const isPasswordValid = await customer.comparePassword(data.password);
+  
+      console.log("Entered password:", data.password); // Display entered password (phone number)
+      console.log("Stored hashed password:", customer.password); // Display stored hashed password
+  
+      // Compare entered password with the stored hashed password
+      const isPasswordValid = await bcrypt.compare(data.password, customer.password);
+  
+      console.log("Password match:", isPasswordValid); // Should now return true if correct
+  
       if (!isPasswordValid) {
         throw new Error("Invalid credentials");
       }
-
+  
       // Generate tokens
       const tokens = JWTUtils.generateTokens(customer);
-
+  
       // Prepare response
       return {
         customer: {
           _id: customer._id,
           name: customer.name,
           email: customer.email,
-          phone: customer.phone,
-          // gender: customer.gender,
-          // dob: customer.dob
+          phone_number: customer.phone_number,
         },
         tokens,
       };
@@ -91,6 +137,9 @@ export class AuthController {
       throw error;
     }
   }
+  
+  
+
 
   static async logout(accessToken: string) {
     try {

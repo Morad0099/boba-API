@@ -1,4 +1,3 @@
-// src/models/customer.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -12,9 +11,15 @@ export interface ICustomer extends Document {
   name: string;
   email: string;
   password: string;
-  phone: string;
-  gender: Gender;
-  dob: Date;
+  phone_number: string;
+  address?: string;
+  city?: string;
+  region?: string;
+  postal_code?: string;
+  country_code?: string;
+  customer_code?: string;
+  note?: string;
+  total_points?: number;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -40,28 +45,43 @@ const customerSchema = new Schema(
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
     },
-    phone: {
+    phone_number: {
       type: String,
       required: [true, "Phone number is required"],
       trim: true,
     },
-    // gender: {
-    //     type: String,
-    //     // required: [true, 'Gender is required'],
-    //     enum: Object.values(Gender),
-    //     uppercase: true,
-    //     trim: true
-    // },
-    // dob: {
-    //     type: Date,
-    //     // required: [true, 'Date of birth is required'],
-    //     validate: {
-    //         validator: function(value: Date) {
-    //             return value <= new Date();
-    //         },
-    //         message: 'Date of birth cannot be in the future'
-    //     }
-    // }
+    address: { 
+      type: String, 
+      trim: true 
+    },
+    city: { 
+      type: String, 
+      trim: true 
+    },
+    region: { 
+      type: String, 
+      trim: true 
+    },
+    postal_code: { 
+      type: String, 
+      trim: true 
+    },
+    country_code: { 
+      type: String, 
+      trim: true 
+    },
+    customer_code: { 
+      type: String, 
+      trim: true 
+    },
+    note: { 
+      type: String, 
+      trim: true 
+    },
+    total_points: { 
+      type: Number, 
+      default: 0 
+    },
   },
   {
     timestamps: true,
@@ -82,11 +102,13 @@ customerSchema.pre("save", async function (next) {
   }
 });
 
+
 // Method to compare password
 customerSchema.methods.comparePassword = async function (
-  candidatePassword: string
+  phone_number: string
 ): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
+  return bcrypt.compare(phone_number, this.password);
 };
+
 
 export const Customer = mongoose.model<ICustomer>("Customer", customerSchema);

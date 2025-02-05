@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICategory extends Document {
     name: string;
+    color: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -11,8 +12,8 @@ const categorySchema = new Schema({
         type: String,
         required: [true, 'Category name is required'],
         trim: true,
-        unique: true,
-    }
+    },
+    color: {type: String}
 }, {
     timestamps: true,
     versionKey: false
