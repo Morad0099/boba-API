@@ -8,6 +8,7 @@ import {
   syncOrderStatuses,
 } from "./category-cron";
 import doronTransactionCron from "./lazypay.cron";
+import syncReceipts from "./sync-receipts.cron";
 
 const initCron = async () => {
   const app = new Elysia();
@@ -55,6 +56,14 @@ const initCron = async () => {
       name: "transaction-sync",
       pattern: "*/5 * * * * *", // Every 5 seconds
       run: initTransactionCron,
+    })
+  );
+
+  app.use(
+    cron({
+      name: "sync-receipts",
+      pattern: "* * * * *", // Every 5 seconds
+      run: syncReceipts.syncFailedReceipts,
     })
   );
 

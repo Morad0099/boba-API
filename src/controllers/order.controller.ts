@@ -1,4 +1,4 @@
-import { Order, OrderStatus } from "../models/order.model";
+import { IOrder, Order, OrderStatus } from "../models/order.model";
 import {
   ITransaction,
   Transaction,
@@ -365,6 +365,188 @@ export class OrderController {
     }
   }
 
+  static async createLoyverseReceipt(order: IOrder) {
+    console.log("Starting Loyverse receipt creation for order:", {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      customerId: order.customer,
+    });
+
+    try {
+      // Log items before processing
+      console.log("Processing order items:", {
+        orderId: order._id,
+        itemCount: order.items.length,
+        items: order.items.map((item) => ({
+          itemId: item.item,
+          quantity: item.quantity,
+          toppingsCount: item.toppings?.length || 0,
+        })),
+      });
+
+      // Get all item details and topping details in parallel
+      const line_items = await Promise.all(
+        order.items.map(async (item, index) => {
+          console.log(`Processing item ${index + 1}/${order.items.length}:`, {
+            itemId: item.item,
+            toppingsCount: item.toppings?.length || 0,
+          });
+
+          try {
+            const [itemDetails, toppingDetails] = await Promise.all([
+              Item.findById(item.item),
+              Promise.all(
+                item.toppings.map(async (t, tIndex) => {
+                  const topping = await Topping.findById(t.topping);
+                  if (!topping) {
+                    console.warn(`Topping not found:`, {
+                      orderId: order._id,
+                      itemIndex: index,
+                      toppingId: t.topping,
+                    });
+                  }
+                  return topping;
+                })
+              ),
+            ]);
+
+            if (!itemDetails) {
+              console.error(`Item not found:`, {
+                orderId: order._id,
+                itemId: item.item,
+              });
+            }
+
+            console.log(`Item details retrieved:`, {
+              itemId: item.item,
+              partnerItemId: itemDetails?.partnerItemId,
+              toppingsFound: toppingDetails.filter(Boolean).length,
+            });
+
+            return {
+              variant_id: itemDetails?.partnerItemId,
+              quantity: item.quantity,
+              price: item.price,
+              line_modifiers: item.toppings.map((topping, index) => {
+                const modifier = {
+                  modifier_option_id: toppingDetails[index]?.partnerToppingsId,
+                  price: topping.price,
+                };
+                console.log(`Topping modifier created:`, {
+                  toppingId: topping.topping,
+                  partnerId: modifier.modifier_option_id,
+                  price: modifier.price,
+                });
+                return modifier;
+              }),
+            };
+          } catch (error) {
+            console.error(`Failed to process item:`, {
+              orderId: order._id,
+              itemId: item.item,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+            throw error;
+          }
+        })
+      );
+
+      console.log("Line items processed successfully:", {
+        orderId: order._id,
+        lineItemsCount: line_items.length,
+      });
+
+      // Get additional required data
+      console.log("Fetching additional data...");
+      const [address, store_id, payment_type_id] = await Promise.all([
+        Address.findById(order.deliveryAddress),
+        $loyverseUtils.getStoreId(),
+        $loyverseUtils.getPaymentMethodId("momo"),
+      ]).catch((error) => {
+        console.error("Failed to fetch additional data:", {
+          orderId: order._id,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        throw error;
+      });
+
+      console.log("Additional data retrieved:", {
+        orderId: order._id,
+        hasAddress: !!address,
+        storeId: store_id,
+        paymentTypeId: payment_type_id,
+      });
+
+      // Create sales receipt
+      const salesReceipt = {
+        store_id,
+        order: order.orderNumber,
+        customer_id: (order.customer as ICustomer)?.partnerCustomerId,
+        source: "BobaApp",
+        receipt_date: new Date().toISOString(),
+        line_items,
+        note: `Delivery Address: ${address?.streetAddress}, ${address?.city}`,
+        payments: [
+          {
+            payment_type_id,
+            paid_at: new Date().toISOString(),
+          },
+        ],
+      };
+
+      console.log("Prepared Loyverse sales receipt:", {
+        orderId: order._id,
+        receipt: {
+          ...salesReceipt,
+          line_items: `${salesReceipt.line_items.length} items`,
+        },
+      });
+
+      // Save receipt payload
+      await order.updateOne({
+        $set: {
+          partnerReceiptPayload: salesReceipt,
+        },
+      });
+
+      console.log("Sending receipt to Loyverse...", {
+        orderId: order._id,
+      });
+
+      // Send to Loyverse and update order
+      const loyverseResponse = await $loyverse.createSalesReceipt(salesReceipt);
+
+      console.log("Loyverse response received:", {
+        orderId: order._id,
+        receiptNumber: loyverseResponse.receipt_number,
+        responseStatus: loyverseResponse.status,
+      });
+
+      await order.updateOne({
+        $set: {
+          partnerReceiptId: loyverseResponse.receipt_number,
+          partnerReceiptData: loyverseResponse,
+        },
+      });
+
+      console.log("Receipt creation completed successfully:", {
+        orderId: order._id,
+        receiptNumber: loyverseResponse.receipt_number,
+      });
+    } catch (error) {
+      console.error("Loyverse integration failed:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Re-throw the error to be handled by the caller
+      throw error;
+    }
+  }
+
   static async processOrderCallback(transactionId: string) {
     try {
       // 1. Get transaction
@@ -396,71 +578,10 @@ export class OrderController {
 
         // Process Loyverse integration
         try {
-          // Get all item details and topping details in parallel
-          const line_items = await Promise.all(
-            order.items.map(async (item) => {
-              const [itemDetails, toppingDetails] = await Promise.all([
-                Item.findById(item.item),
-                Promise.all(
-                  item.toppings.map((t) => Topping.findById(t.topping))
-                ),
-              ]);
-
-              return {
-                variant_id: itemDetails?.partnerItemId,
-                quantity: item.quantity,
-                price: item.price,
-                line_modifiers: item.toppings.map((topping, index) => ({
-                  modifier_option_id: toppingDetails[index]?.partnerToppingsId,
-                  price: topping.price,
-                })),
-              };
-            })
-          );
-
-          // Get additional required data
-          const [address, store_id, payment_type_id] = await Promise.all([
-            Address.findById(order.deliveryAddress),
-            $loyverseUtils.getStoreId(),
-            $loyverseUtils.getPaymentMethodId("momo"),
-          ]);
-
-          // Create sales receipt
-          const salesReceipt = {
-            store_id,
-            order: order.orderNumber,
-            customer_id: (order.customer as ICustomer)?.partnerCustomerId,
-            source: "BobaApp",
-            receipt_date: new Date().toISOString(),
-            line_items,
-            note: `Delivery Address: ${address?.streetAddress}, ${address?.city}`,
-            payments: [
-              {
-                payment_type_id,
-                paid_at: new Date().toISOString(),
-              },
-            ],
-          };
-
-          // Send to Loyverse and update order
-          const loyverseResponse = await $loyverse.createSalesReceipt(
-            salesReceipt
-          );
-          await order.updateOne({
-            $set: {
-              partnerReceiptId: loyverseResponse.receipt_number,
-              partnerReceiptData: loyverseResponse,
-            },
-          });
-        } catch (error) {
-          console.error("Loyverse integration failed:", {
-            error: error instanceof Error ? error.message : "Unknown error",
-            orderId: order._id,
-            transactionId,
-          });
-          // Don't throw - continue with notifications
+          await OrderController.createLoyverseReceipt(order);
+        } catch (err) {
+          console.log(err);
         }
-
         // Send notifications
         try {
           await this.sendNotifications(order, transaction);

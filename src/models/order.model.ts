@@ -53,6 +53,7 @@ const orderSchema = new Schema(
       unique: true,
       // Remove required here since we'll generate it
     },
+    partnerReceiptPayload: Object,
     partnerReceiptId: String,
     partnerReceiptData: Object,
     items: [
