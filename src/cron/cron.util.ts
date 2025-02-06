@@ -5,6 +5,7 @@ import {
   syncCustomers,
   syncItems,
   syncStoreSettings,
+  syncOrderStatuses
 } from "./category-cron";
 import doronTransactionCron from "./lazypay.cron";
 
@@ -21,6 +22,7 @@ const initCron = () => {
       await syncItems();
       await syncCustomers();
       await syncStoreSettings();
+      await syncOrderStatuses();
 
       console.log("Sync process completed successfully");
     } catch (error) {
