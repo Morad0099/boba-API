@@ -5,12 +5,20 @@ import {
   syncCustomers,
   syncItems,
   syncStoreSettings,
-  syncOrderStatuses
+  syncOrderStatuses,
 } from "./category-cron";
 import doronTransactionCron from "./lazypay.cron";
+import { connectDB } from "../config/database";
 
-const initCron = () => {
+const initCron = async () => {
   const app = new Elysia();
+
+  // Connect db
+  try {
+    await connectDB();
+  } catch (err) {
+    console.log("Error connecting database: ", err);
+  }
 
   // Main sync function
   const syncAll = async () => {
