@@ -232,8 +232,6 @@ const syncItems = async () => {
 
 const syncCategories = async () => {
   try {
-    await Category.deleteMany({});
-
     const { categories } = await $loyverse.fetchCategories();
 
     if (!Array.isArray(categories)) {
