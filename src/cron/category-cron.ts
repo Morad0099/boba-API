@@ -141,38 +141,117 @@ const syncStoreSettings = async () => {
 // Sync functions
 const syncCustomers = async () => {
   try {
-    const { customers } = await $loyverse.fetchCustomers();
+    console.log("Starting two-way customer sync");
 
-    if (!Array.isArray(customers)) {
-      throw new Error("Expected customers to be an array");
+    // 1. Fetch both local and Loyverse customers
+    const [{ customers: loyverseCustomers }, localCustomers] =
+      await Promise.all([
+        $loyverse.fetchCustomers(),
+        Customer.find({}), // Get all local customers
+      ]);
+
+    if (!Array.isArray(loyverseCustomers)) {
+      throw new Error("Expected Loyverse customers to be an array");
     }
 
-    const results = await Promise.all(
-      customers.map(async (customer: LoyverseCustomer) => {
+    console.log(
+      `Found ${loyverseCustomers.length} Loyverse customers and ${localCustomers.length} local customers`
+    );
+
+    // 2. Create maps for easier lookup
+    // const loyverseMap = new Map(loyverseCustomers.map((c) => [c.id, c]));
+    // const localMap = new Map(
+    //   localCustomers.map((c) => [c.partnerCustomerId, c])
+    // );
+
+    // 3. Sync Loyverse customers to local DB
+    const loyverseToLocalResults = await Promise.all(
+      loyverseCustomers.map(async (customer: LoyverseCustomer) => {
         try {
           const result = await Customer.updateOne(
             { partnerCustomerId: customer.id },
-            { $set: customer },
+            {
+              $set: {
+                partnerCustomerId: customer.id,
+                name: customer.name,
+                email: customer.email,
+                phone_number: customer.phone_number,
+                address: customer.address,
+                lastSyncedAt: new Date(),
+              },
+            },
             { upsert: true }
           );
 
           console.log(
             `Customer ${customer.id} ${
               result.upsertedCount ? "created" : "updated"
-            }`
+            } locally`
           );
-          return result;
+          return { type: "loyverseToLocal", result };
         } catch (error) {
-          console.error(`Error syncing customer ${customer.id}:`, error);
+          console.error(
+            `Error syncing Loyverse customer ${customer.id} to local:`,
+            error
+          );
           throw error;
         }
       })
     );
 
-    console.log(`Successfully synced ${results.length} customers`);
-    return results;
+    // 4. Sync local customers to Loyverse (only those without partnerCustomerId)
+    const localToLoyverseResults = await Promise.all(
+      localCustomers
+        .filter((customer) => !customer.partnerCustomerId)
+        .map(async (customer) => {
+          try {
+            // Create customer in Loyverse
+            const loyverseCustomer = await $loyverse.createLoyverseCustomer(
+              customer
+            );
+
+            // Update local customer with Loyverse ID
+            const result = await Customer.updateOne(
+              { _id: customer._id },
+              {
+                $set: {
+                  partnerCustomerId: loyverseCustomer.id,
+                  lastSyncedAt: new Date(),
+                },
+              }
+            );
+
+            console.log(
+              `Local customer ${customer._id} synced to Loyverse with ID ${loyverseCustomer.id}`
+            );
+            return { type: "localToLoyverse", result };
+          } catch (error) {
+            console.error(
+              `Error syncing local customer ${customer._id} to Loyverse:`,
+              error
+            );
+            throw error;
+          }
+        })
+    );
+
+    // 5. Summary of sync results
+    const summary = {
+      loyverseToLocal: loyverseToLocalResults.length,
+      localToLoyverse: localToLoyverseResults.length,
+      totalSynced:
+        loyverseToLocalResults.length + localToLoyverseResults.length,
+      timestamp: new Date(),
+    };
+
+    console.log("Customer sync completed:", summary);
+    return summary;
   } catch (error) {
-    console.error("Error in customer sync:", error);
+    console.error("Error in customer sync:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date(),
+    });
     throw error;
   }
 };

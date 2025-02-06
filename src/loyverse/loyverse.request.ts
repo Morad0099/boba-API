@@ -57,6 +57,96 @@ const getStoreSettings = async () => {
   }
 };
 
+// Type definition for the response
+interface LoyverseCustomerResponse {
+  id: string;
+  [key: string]: any;
+}
+
+// Create customer in Loyverse function
+async function createLoyverseCustomer(customer: any) {
+  try {
+    console.log("Preparing customer data for Loyverse:", {
+      customerId: customer._id,
+      name: customer.name,
+      email: customer.email,
+    });
+
+    const thirdPartyPayload = {
+      name: customer.name || "Unknown",
+      email: customer.email,
+      phone_number: customer.phone_number?.replace(/\s+/g, ""),
+      address: customer.address?.trim(),
+      city: customer.city?.trim(),
+      region: customer.region?.trim(),
+      postal_code: customer.postal_code?.trim(),
+      country_code: customer.country_code?.toUpperCase(),
+      customer_code: customer.customer_code,
+      note: customer.note?.trim(),
+      total_points: Math.max(0, parseInt(customer.total_points) || 0),
+    };
+
+    console.log("Sending request to Loyverse:", {
+      customerId: customer._id,
+      url: `${config.baseUrl}/customers`,
+      payload: thirdPartyPayload,
+    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    const response = await fetch(`${config.baseUrl}/customers`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(thirdPartyPayload),
+    });
+
+    clearTimeout(timeoutId);
+
+    const responseData = await response.json();
+
+    console.log("Received response from Loyverse:", {
+      customerId: customer._id,
+      status: response.status,
+      responseId: responseData?.id,
+    });
+
+    if (response.ok) {
+      return responseData;
+    } else if (response.status === 409) {
+      throw new Error("Customer already exists in Loyverse");
+    } else if (response.status === 422) {
+      throw new Error(`Validation error: ${JSON.stringify(responseData)}`);
+    } else if (response.status === 429) {
+      throw new Error("Rate limit exceeded. Please try again later.");
+    } else {
+      throw new Error(
+        `Failed to register customer in Loyverse. Status: ${
+          response.status
+        }, Message: ${responseData?.message || "Unknown error"}`
+      );
+    }
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      console.error("Loyverse request timed out:", {
+        customerId: customer._id,
+        error: "Request timed out after 10 seconds",
+      });
+      throw new Error("Connection to Loyverse timed out");
+    }
+
+    console.error("Failed to create customer in Loyverse:", {
+      customerId: customer._id,
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
+}
+
 const getReceiptStatus = async (receipt_number: string) => {
   try {
     const url: string = `${config.baseUrl}/receipts/${receipt_number}`;
@@ -166,4 +256,5 @@ export default {
   createSalesReceipt,
   getStoreSettings,
   getReceiptStatus,
+  createLoyverseCustomer
 };
