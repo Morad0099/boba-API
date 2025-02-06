@@ -244,6 +244,10 @@ export class OrderController {
 
       if (status === TransactionStatus.SUCCESS) {
         try {
+          console.log(
+            "Forwarding transaction to bull Queue: ",
+            transaction._id
+          );
           callbackQueue.add(transaction);
         } catch (err) {
           console.error("Order processing failed:", {

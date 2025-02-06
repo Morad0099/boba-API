@@ -11,8 +11,9 @@ const transactionQueue = new Bull("callbackQueue", {
 
 // Job processing configuration
 transactionQueue.process(async (job) => {
-  const { data: transaction } = job;
   try {
+    console.log("Processing callback queue transaction: ", job.data);
+    const { data: transaction } = job;
     // Process the transaction
     await OrderController.processOrderCallback(transaction?._id);
     return null;
