@@ -7,9 +7,8 @@ import type {
   AuthResponse,
 } from "../types/auth.types";
 import { TokenBlacklist } from "../models/token-blacklist.model";
-import axios from "axios";
 import bcrypt from "bcrypt";
-import $loyverseConfig from "../loyverse/loyverse.config";
+import $loyverse from "../loyverse/loyverse.request";
 
 export class AuthController {
   static async register(
@@ -37,7 +36,8 @@ export class AuthController {
         password: hashedPassword, // Use hashed phone as password
         phone_number: data.phone_number, // Ensure it's correctly assigned
       });
-      await customer.save();
+
+      const newCustomer = await customer.save();
 
       // Prepare payload for third-party service
       const thirdPartyPayload = {
@@ -56,19 +56,15 @@ export class AuthController {
       };
 
       // Save customer in third-party service
-      const thirdPartyResponse = await axios.post(
-        `${$loyverseConfig.baseUrl}/customers`,
-        thirdPartyPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${$loyverseConfig.apiKey}`,
-          },
-        }
+      const loyverseResponse = await $loyverse.createLoyverseCustomer(
+        thirdPartyPayload
       );
 
-      if (thirdPartyResponse.status !== 200) {
-        throw new Error("Failed to register customer in third-party service");
-      }
+      await newCustomer.updateOne({
+        $set: {
+          partnerCustomerId: loyverseResponse.id,
+        },
+      });
 
       // Generate tokens
       const tokens = JWTUtils.generateTokens(customer);
