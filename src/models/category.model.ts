@@ -11,11 +11,7 @@ export interface ICategory extends Document {
 const categorySchema = new Schema(
   {
     partnerCategoryId: String,
-    name: {
-      type: String,
-      required: [true, "Category name is required"],
-      trim: true,
-    },
+    name: String,
     color: { type: String },
   },
   {
