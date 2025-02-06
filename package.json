@@ -2,7 +2,7 @@
   "name": "BobaAPI",
   "version": "1.0.50",
   "scripts": {
-    "start": "pm2 start -n boba-api -i 1 --interpreter ~/.bun/bin/bun build/index.js",
+    "start": "pm2 start ecosystem.config.js",
     "restart": "pm2 restart boba-api",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.1",
+    "@elysiajs/cron": "^1.2.0",
     "@elysiajs/static": "^1.1.1",
     "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
-    "elysia": "^1.1.24",
+    "bull": "^4.16.5",
+    "elysia": "^1.2.12",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.1",
     "node-cron": "^3.0.3"

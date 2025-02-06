@@ -1,10 +1,8 @@
-import cron from "node-cron";
 import { Category } from "../models/category.model";
 import $loyverse from "../loyverse/loyverse.request";
 import { Item } from "../models/item.model";
 import { Customer } from "../models/customer.model";
 import dbStoreSettings from "../loyverse/loyverse.store-settings.db";
-
 
 // Types
 interface LoyverseVariant {
@@ -196,23 +194,4 @@ const syncCategories = async () => {
   }
 };
 
-// Main sync function
-const syncAll = async () => {
-  try {
-    console.log("Starting sync process...");
-
-    // Sync in order: categories first, then items, then customers
-    await syncCategories();
-    await syncItems();
-    await syncCustomers();
-    await syncStoreSettings();
-
-    console.log("Sync process completed successfully");
-  } catch (error) {
-    console.error("Error in sync process:", error);
-  }
-};
-
-// Schedule sync every minute
-cron.schedule("0 * * * * *", syncAll);
-export { syncCategories, syncItems, syncCustomers, syncStoreSettings, syncAll };
+export { syncCategories, syncItems, syncCustomers, syncStoreSettings };
