@@ -10,7 +10,7 @@ interface StoreResponse {
 }
 
 interface PaymentResponse {
-  paymentMethods: Array<{
+  payment_types: Array<{
     id: string;
     name: string;
     // Add other payment type properties
@@ -45,11 +45,11 @@ const getStoreSettings = async () => {
     }
 
     const { stores }: StoreResponse = await storeResponse.json();
-    const { paymentMethods }: PaymentResponse = await paymentResponse.json();
+    const { payment_types }: PaymentResponse = await paymentResponse.json();
 
     return {
       storeData: stores,
-      paymentData: paymentMethods,
+      paymentData: payment_types,
     };
   } catch (error) {
     console.error("Failed to fetch store settings:", error);
