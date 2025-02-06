@@ -167,25 +167,78 @@ const getReceiptStatus = async (receipt_number: string) => {
   }
 };
 
+interface LoyverseReceipt {
+  receipt_number: string;
+  status?: string;
+  [key: string]: any;
+}
+
 const createSalesReceipt = async (payload: any) => {
   try {
-    const url: string = `${config.baseUrl}/receipts`;
-    const options = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    };
+    console.log("Creating sales receipt in Loyverse:", {
+      orderNumber: payload.order,
+      customerId: payload.customer_id,
+      items: payload.line_items?.length || 0,
+    });
+
+    const url = `${config.baseUrl}/receipts`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
     const response = await fetch(url, {
       method: "POST",
-      headers: options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
       body: JSON.stringify(payload),
     });
-    if (!response.ok) {
-      throw Error(response.statusText);
+
+    clearTimeout(timeoutId);
+
+    const responseData = await response.json();
+
+    console.log("Received response from Loyverse:", {
+      status: response.status,
+      orderNumber: payload.order,
+      receiptNumber: responseData?.receipt_number,
+    });
+
+    if (response.ok) {
+      return responseData as LoyverseReceipt;
     }
-    const data = await response.json();
-    return data;
-  } catch (err) {
-    throw err;
+
+    // Handle specific error cases
+    if (response.status === 400) {
+      throw new Error(`Invalid receipt data: ${JSON.stringify(responseData)}`);
+    } else if (response.status === 422) {
+      throw new Error(`Validation error: ${JSON.stringify(responseData)}`);
+    } else if (response.status === 429) {
+      throw new Error("Rate limit exceeded. Please try again later.");
+    }
+
+    throw new Error(
+      `Failed to create receipt. Status: ${response.status}, Message: ${
+        responseData?.message || response.statusText || "Unknown error"
+      }`
+    );
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      console.error("Receipt creation timed out:", {
+        orderNumber: payload.order,
+        timeout: "15 seconds",
+      });
+      throw new Error("Receipt creation request timed out");
+    }
+
+    console.error("Failed to create receipt:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      orderNumber: payload.order,
+      customerId: payload.customer_id,
+    });
+
+    throw error;
   }
 };
 
@@ -256,5 +309,5 @@ export default {
   createSalesReceipt,
   getStoreSettings,
   getReceiptStatus,
-  createLoyverseCustomer
+  createLoyverseCustomer,
 };
