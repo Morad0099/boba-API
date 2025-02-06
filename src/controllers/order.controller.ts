@@ -424,7 +424,7 @@ export class OrderController {
             });
 
             return {
-              variant_id: itemDetails?.partnerItemId,
+              variant_id: itemDetails?.parnterVarientId,
               quantity: item.quantity,
               price: item.price,
               line_modifiers: item.toppings.map((topping, index) => {

@@ -8,6 +8,10 @@ import moment from "moment";
 
 // Types
 interface LoyverseVariant {
+  variant_id: unknown;
+  item_id: unknown;
+  name: unknown;
+  id: unknown;
   cost: number;
 }
 
@@ -275,8 +279,6 @@ const syncItems = async () => {
           item.description?.replace(/<[^>]*>/g, "") || "";
 
         const baseItem = {
-          name: item.item_name,
-          partnerItemId: item.id,
           description: cleanDescription,
           createdAt: item.created_at,
           color: item.color,
@@ -284,15 +286,21 @@ const syncItems = async () => {
         };
 
         const variantResults = await Promise.all(
-          item.variants.map((variant) =>
-            Item.findOneAndUpdate(
+          item.variants.map((variant) => {
+            return Item.findOneAndUpdate(
               { partnerItemId: item.id },
-              { $set: { ...baseItem, price: variant.cost } },
+              {
+                $set: Object.assign(baseItem, {
+                  parnterVarientId: variant.variant_id,
+                  partnerItemId: variant.item_id,
+                  price: variant.cost,
+                  name: variant.name,
+                }),
+              },
               { upsert: true, new: true }
-            )
-          )
+            );
+          })
         );
-
         console.log(
           `Item ${item.item_name} synced with ${variantResults.length} variants`
         );

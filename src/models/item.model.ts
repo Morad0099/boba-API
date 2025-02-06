@@ -3,6 +3,7 @@ import { ICategory } from "./category.model";
 
 export interface IItem extends Document {
   partnerItemId: string;
+  parnterVarientId: string;
   name: string;
   category: ICategory["_id"];
   description?: string;
@@ -16,6 +17,7 @@ export interface IItem extends Document {
 
 const itemSchema = new Schema(
   {
+    parnterVarientId: String,
     partnerItemId: String,
     name: {
       type: String,
@@ -38,7 +40,6 @@ const itemSchema = new Schema(
     },
     image: {
       type: String,
-      required: [true, "Item image is required"],
     },
     inStock: {
       type: Boolean,
