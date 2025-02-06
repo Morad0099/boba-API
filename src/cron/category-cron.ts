@@ -240,25 +240,39 @@ const syncCategories = async () => {
 
     const results = await Promise.all(
       categories.map(async (category: LoyverseCategory) => {
-        const result = await Category.findOneAndUpdate(
-          { partnerCategoryId: category.id },
-          {
-            $set: {
-              name: category.name,
-              color: category.color,
-              createdAt: category.created_at,
-              deleted_at: category.deleted_at,
-              partnerCategoryId: category.id,
-            },
-          },
-          { upsert: true, new: true }
-        );
+        // First check if category exists by partnerCategoryId
+        const existingCategory = await Category.findOne({
+          partnerCategoryId: category.id,
+        });
 
-        console.log(
-          `Category ${category.name} ${
-            result._id ? "created" : "updated"
-          }`
-        );
+        // If it exists, do an update
+        if (existingCategory) {
+          const result = await Category.findOneAndUpdate(
+            { partnerCategoryId: category.id },
+            {
+              $set: {
+                name: category.name,
+                color: category.color,
+                createdAt: category.created_at,
+                deleted_at: category.deleted_at,
+              },
+            },
+            { new: true }
+          );
+          console.log(`Category ${category.name} updated`);
+          return result;
+        }
+
+        // If it doesn't exist, create new
+        const result = await Category.create({
+          partnerCategoryId: category.id,
+          name: category.name,
+          color: category.color,
+          createdAt: category.created_at,
+          deleted_at: category.deleted_at,
+        });
+
+        console.log(`Category ${category.name} created`);
         return result;
       })
     );
