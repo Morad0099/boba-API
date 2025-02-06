@@ -248,7 +248,8 @@ export class OrderController {
             "Forwarding transaction to bull Queue: ",
             transaction._id
           );
-          await callbackQueue.add(transaction);
+          // await callbackQueue.add(transaction);
+          await OrderController.processOrderCallback(transaction._id as string);
         } catch (err) {
           console.error("Order processing failed:", {
             transactionId: body.transactionId,

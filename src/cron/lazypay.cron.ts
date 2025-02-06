@@ -2,6 +2,7 @@ import Bull from "bull";
 import $lazypay from "../doronpay/doronpay.util";
 import { Transaction, TransactionStatus } from "../models/transaction.model";
 import callbackQueue from "../controllers/callabck.queue.controller";
+import { OrderController } from "../controllers/order.controller";
 
 const transactionQueue = new Bull("pendingTransactions", {
   redis: {
@@ -49,8 +50,12 @@ transactionQueue.process(1, async (job) => {
     });
 
     if (status === TransactionStatus.SUCCESS) {
-      console.log("Callback forwarding transaction to bull Queue: ", transaction._id);
-      await callbackQueue.add(currentTransaction);
+      console.log(
+        "Callback forwarding transaction to bull Queue: ",
+        transaction._id
+      );
+      // await callbackQueue.add(currentTransaction);
+      await OrderController.processOrderCallback(transaction._id as string);
     }
 
     console.log(`Transaction ${response.transactionId} processed: ${status}`);
