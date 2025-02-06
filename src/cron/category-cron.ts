@@ -232,6 +232,8 @@ const syncItems = async () => {
 
 const syncCategories = async () => {
   try {
+    await Category.deleteMany({});
+
     const { categories } = await $loyverse.fetchCategories();
 
     if (!Array.isArray(categories)) {
@@ -280,7 +282,7 @@ const syncCategories = async () => {
     console.log(`Successfully synced ${results.length} categories`);
     return results;
   } catch (error) {
-    console.error("Error processing categories:", error);
+    console.info("Error processing categories:", error);
     throw error;
   }
 };
