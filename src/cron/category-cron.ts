@@ -240,7 +240,7 @@ const syncCategories = async () => {
 
     const results = await Promise.all(
       categories.map(async (category: LoyverseCategory) => {
-        const result = await Category.updateOne(
+        const result = await Category.findOneAndUpdate(
           { partnerCategoryId: category.id },
           {
             $set: {
@@ -251,12 +251,12 @@ const syncCategories = async () => {
               partnerCategoryId: category.id,
             },
           },
-          { upsert: true }
+          { upsert: true, new: true }
         );
 
         console.log(
           `Category ${category.name} ${
-            result.upsertedCount ? "created" : "updated"
+            result._id ? "created" : "updated"
           }`
         );
         return result;
