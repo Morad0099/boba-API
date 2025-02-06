@@ -197,11 +197,9 @@ export class OrderController {
   }
 
   // Add callback handler for payment provider webhook
-  static async handleCallback(req: Request) {
+  static async handleCallback(body: PaymentCallbackBody) {
     try {
-      // 1. Parse and validate request
-      const body = (await req.json()) as PaymentCallbackBody;
-
+      // 1. Parse and validate request - no need to parse JSON anymore
       if (!body?.code || !body?.transactionId) {
         return {
           success: false,
@@ -214,7 +212,7 @@ export class OrderController {
         code: body.code,
       });
 
-      // 2. Find transaction
+      // Rest of your code remains the same...
       const transaction = await Transaction.findOne({
         "metadata.paymentProviderRef": body.transactionId,
       });
@@ -227,7 +225,6 @@ export class OrderController {
         };
       }
 
-      // 3. Map payment status
       const status =
         body.code === "00"
           ? TransactionStatus.SUCCESS
@@ -235,7 +232,6 @@ export class OrderController {
           ? TransactionStatus.FAILED
           : TransactionStatus.PENDING;
 
-      // 4. Update transaction
       await Transaction.findByIdAndUpdate(transaction._id, {
         $set: {
           status,
@@ -245,7 +241,6 @@ export class OrderController {
         },
       });
 
-      // 5. Process successful payments
       if (status === TransactionStatus.SUCCESS) {
         try {
           await OrderController.processOrderCallback(transaction._id as string);
@@ -265,7 +260,7 @@ export class OrderController {
     } catch (error) {
       console.error("Payment callback error:", {
         error: error instanceof Error ? error.message : "Unknown error",
-        body: req.body,
+        body,
       });
 
       return {
