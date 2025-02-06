@@ -16,6 +16,20 @@ export class CategoryController {
     }
   }
 
+  static async deleteCategory(id: string) {
+    try {
+      const category = await Category.findById(id);
+      if (!category) {
+        throw new Error("Category not found");
+      }
+
+      await Category.findByIdAndDelete(id);
+      return { message: "Category deleted successfully" };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   static async getAllCategories() {
     try {
       return await Category.find().sort({ name: 1 });
