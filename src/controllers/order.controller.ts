@@ -19,6 +19,7 @@ import { SMSService } from "../services/sms.service";
 import $loyverse from "../loyverse/loyverse.request";
 import $loyverseUtils from "../loyverse/loyverse.utils";
 import LazyPayAPI from "../doronpay/doronpay.util";
+import callbackQueue from "./callabck.queue.controller";
 
 interface PaymentCallbackBody {
   code: string;
@@ -243,7 +244,7 @@ export class OrderController {
 
       if (status === TransactionStatus.SUCCESS) {
         try {
-          await OrderController.processOrderCallback(transaction._id as string);
+          callbackQueue.add(transaction);
         } catch (err) {
           console.error("Order processing failed:", {
             transactionId: body.transactionId,
@@ -378,6 +379,10 @@ export class OrderController {
           throw new Error(`Order not found for transaction: ${transactionId}`);
         }
 
+        if (order.status === OrderStatus.CONFIRMED) {
+          throw Error("Order already processed");
+        }
+
         // Update order status first
         await order.updateOne({
           status: OrderStatus.CONFIRMED,
@@ -470,7 +475,7 @@ export class OrderController {
         });
       }
     } catch (error) {
-      console.error("Order callback processing failed:", {
+      console.info("Order callback processing failed:", {
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
         transactionId,

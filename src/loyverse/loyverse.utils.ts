@@ -15,13 +15,14 @@ const getStoreId = async (): Promise<string | null> => {
   try {
     const settings = await dbSettings.findOne({});
 
+    console.log(settings);
+
     if (!settings?.stores?.length) {
       console.warn("No stores found in settings");
       return null;
     }
 
     const storeId = settings.stores[0]?.id;
-
     if (!storeId) {
       console.warn("First store has no ID");
       return null;
