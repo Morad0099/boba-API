@@ -3,10 +3,9 @@ import { Transaction, TransactionStatus } from "../models/transaction.model";
 import { OrderController } from "../controllers/order.controller";
 
 class ReceiptSyncCron {
-  private static isRunning = false;
+  private isRunning = false;
 
-  static async syncFailedReceipts() {
-    // Prevent multiple runs
+  async syncFailedReceipts() {
     if (this.isRunning) {
       console.log("Receipt sync already running, skipping...");
       return;
@@ -23,8 +22,11 @@ class ReceiptSyncCron {
       })
         .populate("customer")
         .populate("items.item")
-        .limit(10); // Process in batches
+        .limit(10);
 
+      console.log(`Found ${failedOrders.length} orders to sync`);
+
+      // Your existing sync logic here
       console.log(`Found ${failedOrders.length} orders to sync`);
 
       for (const order of failedOrders) {
@@ -79,4 +81,6 @@ class ReceiptSyncCron {
   }
 }
 
-export default ReceiptSyncCron;
+// Create an instance and use it
+const receiptSync = new ReceiptSyncCron();
+export default receiptSync;
