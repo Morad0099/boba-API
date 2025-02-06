@@ -10,7 +10,7 @@ interface StoreResponse {
 }
 
 interface PaymentResponse {
-  payment_types: Array<{
+  paymentMethods: Array<{
     id: string;
     name: string;
     // Add other payment type properties
@@ -44,12 +44,12 @@ const getStoreSettings = async () => {
       throw new Error(`Payment API Error: ${paymentResponse.statusText}`);
     }
 
-    const storeData: StoreResponse = await storeResponse.json();
-    const paymentData: PaymentResponse = await paymentResponse.json();
+    const { stores }: StoreResponse = await storeResponse.json();
+    const { paymentMethods }: PaymentResponse = await paymentResponse.json();
 
     return {
-      storeData,
-      paymentData,
+      storeData: stores,
+      paymentData: paymentMethods,
     };
   } catch (error) {
     console.error("Failed to fetch store settings:", error);
@@ -165,5 +165,5 @@ export default {
   fetchCustomers,
   createSalesReceipt,
   getStoreSettings,
-  getReceiptStatus
+  getReceiptStatus,
 };
