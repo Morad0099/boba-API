@@ -119,6 +119,8 @@ const syncStoreSettings = async () => {
       stores: storeData,
     };
 
+    console.log(settingsData);
+
     // Find existing settings or create new
     const result = await dbStoreSettings.findOneAndUpdate(
       {}, // Empty filter to match any document
@@ -129,6 +131,8 @@ const syncStoreSettings = async () => {
         setDefaultsOnInsert: true,
       }
     );
+
+    console.log('Settings result: ', result);
 
     console.log(`Store settings ${result._id ? "updated" : "created"}`);
 
