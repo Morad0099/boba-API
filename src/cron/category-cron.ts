@@ -114,6 +114,8 @@ const syncStoreSettings = async () => {
     // Fetch latest settings from Loyverse
     const { paymentData, storeData } = await $loyverse.getStoreSettings();
 
+    console.log(paymentData, storeData);
+
     const settingsData = {
       paymentMethods: paymentData,
       stores: storeData,

@@ -49,8 +49,8 @@ transactionQueue.process(1, async (job) => {
     });
 
     if (status === TransactionStatus.SUCCESS) {
-      console.log("Forwarding transaction to bull Queue: ", transaction._id);
-      callbackQueue.add(currentTransaction);
+      console.log("Callback forwarding transaction to bull Queue: ", transaction._id);
+      await callbackQueue.add(currentTransaction);
     }
 
     console.log(`Transaction ${response.transactionId} processed: ${status}`);

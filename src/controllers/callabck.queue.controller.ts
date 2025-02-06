@@ -25,14 +25,40 @@ transactionQueue.process(async (job) => {
   }
 });
 
-// Optional: Configure global queue events for monitoring
-transactionQueue.on("failed", (job, err) => {
-  console.error(`Job ${job.id} failed with error: ${err}`);
+// Enhanced error monitoring
+transactionQueue.on("failed", (job, error) => {
+  console.error("Job failed:", {
+    jobId: job.id,
+    transactionId: job.data._id,
+    attempts: job.attemptsMade,
+    error: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// Optional: Middleware for additional logging or preprocessing
 transactionQueue.on("completed", (job) => {
-  console.log(`Job ${job.id} completed successfully`);
+  console.log("Job completed successfully:", {
+    jobId: job.id,
+    transactionId: job.data._id,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Monitor stalled jobs
+transactionQueue.on("stalled", (job) => {
+  console.warn("Job stalled:", {
+    jobId: job.id,
+    transactionId: job.data._id,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("Shutting down queue...");
+  await transactionQueue.close();
+  process.exit(0);
 });
 
 export default transactionQueue;
