@@ -1,9 +1,8 @@
-import $lazypay from "../doronpay/doronpay.util";
 import Bull from "bull";
+import $lazypay from "../doronpay/doronpay.util";
 import { Transaction, TransactionStatus } from "../models/transaction.model";
 import { OrderController } from "../controllers/order.controller";
 
-// Create a queue for processing transactions
 const transactionQueue = new Bull("pendingTransactions", {
   redis: {
     host: process.env.REDIS_HOST || "127.0.0.1",
@@ -11,11 +10,13 @@ const transactionQueue = new Bull("pendingTransactions", {
   },
 });
 
-// Define the job processor
+// Set concurrency to 1 to process one at a time
 transactionQueue.process(1, async (job) => {
-  const ref = job.data;
+  const transaction = job.data;
+
   try {
-    const { paymentProviderRef } = ref.metadata;
+    const { paymentProviderRef } = transaction.metadata;
+    console.log(`Processing transaction: ${paymentProviderRef}`);
 
     const lazyToken = await $lazypay.getToken();
     const response = await $lazypay.getStatus({
@@ -23,71 +24,88 @@ transactionQueue.process(1, async (job) => {
       token: lazyToken,
     });
 
-    const { code, transactionId } = response;
-
-    // Find transaction
-    const transaction = await Transaction.findOne({
-      "metadata.paymentProviderRef": transactionId,
+    const currentTransaction = await Transaction.findOne({
+      "metadata.paymentProviderRef": response.transactionId,
     });
 
-    if (!transaction?._id) {
-      throw new Error("Transaction not found");
+    if (!currentTransaction?._id) {
+      throw new Error(`Transaction not found: ${response.transactionId}`);
     }
 
-    // Map payment provider status to your status
-    let status: TransactionStatus;
-    switch (code) {
-      case "00":
-        status = TransactionStatus.SUCCESS;
-        break;
-      case "02":
-        status = TransactionStatus.FAILED;
-        break;
-      default:
-        status = TransactionStatus.PENDING;
-        break;
-    }
+    const status =
+      response.code === "00"
+        ? TransactionStatus.SUCCESS
+        : response.code === "02"
+        ? TransactionStatus.FAILED
+        : TransactionStatus.PENDING;
 
-    // Update transaction
-    await transaction.updateOne({
+    await Transaction.findByIdAndUpdate(currentTransaction._id, {
       $set: {
         status,
         "metadata.paymentCallback": response,
+        "metadata.lastChecked": new Date(),
         updatedAt: new Date(),
       },
     });
 
-    // Handle the response
-    await OrderController.processOrderCallback(transaction._id as string);
-  } catch (error: any) {
-    console.error(
-      `Error processing transaction ${ref.transactionRef}: ${error.message}`
-    );
-    throw error; // Allow the job to retry if enabled
+    if (status === TransactionStatus.SUCCESS) {
+      await OrderController.processOrderCallback(
+        currentTransaction._id.toString()
+      );
+    }
+
+    console.log(`Transaction ${response.transactionId} processed: ${status}`);
+  } catch (error) {
+    console.error("Transaction processing error:", {
+      ref: transaction?.metadata?.paymentProviderRef,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
   }
 });
 
-const pending = async (): Promise<void> => {
+// Queue monitoring
+transactionQueue.on("completed", (job) => {
+  console.log(
+    `✅ Completed transaction: ${job.data.metadata.paymentProviderRef}`
+  );
+});
+
+transactionQueue.on("failed", (job, err) => {
+  console.error(
+    `❌ Failed transaction: ${job.data.metadata.paymentProviderRef}`,
+    err
+  );
+});
+
+transactionQueue.on("active", (job) => {
+  console.log(
+    `⚡ Starting transaction: ${job.data.metadata.paymentProviderRef}`
+  );
+});
+
+const queuePendingTransactions = async (): Promise<void> => {
   try {
-    console.log("Fetching pending transactions...");
     const transactions = await Transaction.find({
       status: TransactionStatus.PENDING,
     });
 
-    // Add each transaction to the queue
     for (const transaction of transactions) {
-      transactionQueue.add(transaction, {
-        attempts: 1, // Retry the job up to 3 times if it fails
-        backoff: 5000, // Wait 5 seconds before retrying
-        removeOnComplete: true, // Automatically remove job after it completes
-        removeOnFail: true, // Automatically remove job after it fails
+      await transactionQueue.add(transaction, {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 5000,
+        },
+        removeOnComplete: true,
+        removeOnFail: true,
       });
     }
 
-    console.log(`${transactions.length} transactions queued for processing.`);
-  } catch (error: any) {
-    console.error(`Error queuing pending transactions: ${error.message}`);
+    console.log(`Queued ${transactions.length} transactions`);
+  } catch (error) {
+    console.error("Error queuing transactions:", error);
   }
 };
 
-export default pending;
+export default queuePendingTransactions;

@@ -20,6 +20,12 @@ import $loyverse from "../loyverse/loyverse.request";
 import $loyverseUtils from "../loyverse/loyverse.utils";
 import LazyPayAPI from "../doronpay/doronpay.util";
 
+interface PaymentCallbackBody {
+  code: string;
+  transactionId: string;
+  [key: string]: any;
+}
+
 export class OrderController {
   static async createOrder(
     customerId: string,
@@ -191,52 +197,81 @@ export class OrderController {
   }
 
   // Add callback handler for payment provider webhook
-  static async handleCallback(req: Request): Promise<any> {
+  static async handleCallback(req: Request) {
     try {
-      const { code, transactionId } = req.body as any;
+      // 1. Parse and validate request
+      const body = (await req.json()) as PaymentCallbackBody;
 
-      // Find transaction
-      const transaction = await Transaction.findOne({
-        "metadata.paymentProviderRef": transactionId,
+      if (!body?.code || !body?.transactionId) {
+        return {
+          success: false,
+          error: "Invalid callback: missing code or transactionId",
+        };
+      }
+
+      console.log("Payment callback received:", {
+        transactionId: body.transactionId,
+        code: body.code,
       });
 
-      if (!transaction?._id) {
-        throw new Error("Transaction not found");
+      // 2. Find transaction
+      const transaction = await Transaction.findOne({
+        "metadata.paymentProviderRef": body.transactionId,
+      });
+
+      if (!transaction) {
+        console.error(`Transaction not found: ${body.transactionId}`);
+        return {
+          success: false,
+          error: "Transaction not found",
+        };
       }
 
-      // Map payment provider status to your status
-      let status: TransactionStatus;
-      switch (code) {
-        case "00":
-          status = TransactionStatus.SUCCESS;
-          break;
-        case "02":
-          status = TransactionStatus.FAILED;
-          break;
-        default:
-          status = TransactionStatus.PENDING;
-          break;
-      }
+      // 3. Map payment status
+      const status =
+        body.code === "00"
+          ? TransactionStatus.SUCCESS
+          : body.code === "02"
+          ? TransactionStatus.FAILED
+          : TransactionStatus.PENDING;
 
-      // Update transaction
-      await transaction.updateOne({
+      // 4. Update transaction
+      await Transaction.findByIdAndUpdate(transaction._id, {
         $set: {
           status,
-          "metadata.paymentCallback": req.body,
+          "metadata.paymentCallback": body,
+          "metadata.lastProcessedAt": new Date(),
           updatedAt: new Date(),
         },
       });
 
-      // If payment successful, update order and send notifications
-      try {
-        await OrderController.processOrderCallback(transaction._id as string);
-      } catch (err: any) {
-        console.log("Error processing callback: ", err.message);
+      // 5. Process successful payments
+      if (status === TransactionStatus.SUCCESS) {
+        try {
+          await OrderController.processOrderCallback(transaction._id as string);
+        } catch (err) {
+          console.error("Order processing failed:", {
+            transactionId: body.transactionId,
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
+        }
       }
-      return { success: true };
+
+      return {
+        success: true,
+        status,
+        transactionId: body.transactionId,
+      };
     } catch (error) {
-      console.error("Payment callback error:", error);
-      throw error;
+      console.error("Payment callback error:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        body: req.body,
+      });
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
